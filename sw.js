@@ -1,9 +1,9 @@
-// Service worker del tablero de producción: avisos push y la app abre aunque no haya red.
-const CACHE = 'produccion-v1';
-const BASICOS = ['/', '/index.html', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png'];
+// Service worker del tablero de producción: avisos en la barra del teléfono y la app abre aunque no haya red.
+const CACHE = 'produccion-v2';
+const BASICOS = ['/', '/index.html', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png', '/icono-barra.png'];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASICOS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(BASICOS)).catch(() => {}).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -24,23 +24,38 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
-// Push: solo llegan los "te toca" (los mensajes normales no mandan push; suben el contador dentro de la app).
+function leer(e) {
+  if (!e.data) return {};
+  try { return e.data.json(); } catch (_) {}
+  try { return { texto: e.data.text() }; } catch (_) { return {}; }
+}
+
+function mostrar(d) {
+  return self.registration.showNotification(d.titulo || 'Te toca', {
+    body: d.texto || 'Abre el tablero de producción.',
+    icon: '/icono-192.png',
+    badge: '/icono-barra.png',      // ícono blanco que Android pone en la barra de arriba
+    tag: d.tag || ('aviso-' + Date.now()),
+    renotify: true,
+    requireInteraction: false,
+    silent: false,
+    vibrate: [200, 100, 200],
+    timestamp: Date.now(),
+    data: { url: d.url || '/' }
+  });
+}
+
+// Push: solo llegan los "te toca". Primero SIEMPRE la notificación en la barra; el número en el ícono va aparte.
 self.addEventListener('push', (e) => {
-  let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { titulo: 'Producción', texto: e.data ? e.data.text() : '' }; }
-  const titulo = d.titulo || 'Te toca';
-  e.waitUntil(Promise.all([
-    self.registration.showNotification(titulo, {
-      body: d.texto || '',
-      icon: '/icono-192.png',
-      badge: '/icono-192.png',
-      tag: d.tag || 'aviso',
-      renotify: true,
-      vibrate: [120, 60, 120],
-      data: { url: d.url || '/' }
-    }),
-    self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge().catch(() => {}) : Promise.resolve()
-  ]));
+  const d = leer(e);
+  e.waitUntil(mostrar(d).then(() => {
+    try { if (self.navigator && self.navigator.setAppBadge) return self.navigator.setAppBadge().catch(() => {}); } catch (_) {}
+  }));
+});
+
+// La app puede pedir una notificación de prueba local (botón "Probar aviso").
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.prueba) e.waitUntil(mostrar({ titulo: 'Te toca · prueba', texto: 'Así se ven los avisos del tablero en tu barra.', tag: 'prueba-local' }));
 });
 
 self.addEventListener('notificationclick', (e) => {

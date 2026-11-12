@@ -533,7 +533,12 @@ async function bandaPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
-  if (sub && Notification.permission === 'granted') { guardarSub(sub); return; }
+  if (sub && Notification.permission === 'granted') {
+    guardarSub(sub);
+    box.append(h('div', { class: 'banda' }, h('span', {}, 'Avisos activados en este teléfono.'),
+      h('button', { class: 'btn chico sec', type: 'button', onclick: probarAviso }, 'Probar aviso')));
+    return;
+  }
   if (Notification.permission === 'denied') {
     box.append(h('div', { class: 'banda' }, h('span', {}, 'Los avisos están bloqueados. Actívalos en los permisos del sitio (candado junto a la dirección).')));
     return;
@@ -549,8 +554,19 @@ async function activarPush() {
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(VAPID_PUBLICA) });
     await guardarSub(sub);
     bandaPush();
-    toast({ titulo: 'Avisos activados', texto: 'Te llegarán solo los "te toca".' });
+    probarAviso();
   } catch (e) { alert('No pude activar los avisos: ' + e.message); }
+}
+// Muestra un aviso en la barra del teléfono sin pasar por el servidor (para saber si el teléfono lo deja salir).
+async function probarAviso() {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('Te toca · prueba', {
+      body: 'Así se ven los avisos del tablero en tu barra.', icon: '/icono-192.png', badge: '/icono-barra.png',
+      tag: 'prueba-local', renotify: true, vibrate: [200, 100, 200], data: { url: '/' }
+    });
+    toast({ titulo: 'Aviso de prueba enviado', texto: 'Baja la barra de notificaciones para verlo.' });
+  } catch (e) { alert('El teléfono no dejó mostrar el aviso: ' + e.message); }
 }
 async function guardarSub(sub) {
   const j = sub.toJSON();
@@ -561,7 +577,7 @@ async function guardarSub(sub) {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
   navigator.serviceWorker.addEventListener('message', (e) => {
     const m = e.data && e.data.abrir && e.data.abrir.match(/c=([0-9a-f-]{36})/);
     if (m) elegir(m[1], true);
