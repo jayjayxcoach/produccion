@@ -69,7 +69,9 @@ header.barra{display:flex;align-items:center;justify-content:space-between;gap:1
 .cab-clienta h1{margin:2px 0 4px;font-size:34px;color:var(--vino);line-height:1.05}
 .meta{font-size:13px;color:var(--gris)}
 .pasos{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:16px}
-.paso{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;color:var(--gris2);text-align:center}
+.paso{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11.5px;color:var(--gris2);text-align:center;background:none;border:none;padding:4px 0;min-height:44px;border-radius:10px;font-family:inherit}
+.paso:hover i{border-color:var(--vino)}
+.paso:focus-visible{outline:2px solid var(--vino);outline-offset:2px}
 .paso i{font-style:normal;width:30px;height:30px;border-radius:999px;border:1px solid var(--linea);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:var(--gris2)}
 .paso.hecho i{background:var(--vino-claro);color:var(--vino);border-color:var(--vino-claro)}
 .paso.ahora i{background:var(--vino);color:#fff;border-color:var(--vino)}
@@ -478,7 +480,7 @@ function pintarLista() {
     cont.append(g);
   }
   for (const p of [1, 2, 3, 4, 5, 6, 7, 0]) {
-    const items = E.clientas.filter((c) => (c.paso || 0) === p && !tocaDe(c.cid).length);
+    const items = E.clientas.filter((c) => pasoDe(c) === p && !tocaDe(c.cid).length);
     if (!items.length) continue;
     const limite = p === 0 && !E.verTodos[p] ? 8 : 999;
     const g = h('div', { class: 'grupo' },
@@ -493,7 +495,7 @@ function filaClienta(c) {
   const toca = tocaDe(c.cid).length > 0, nl = E.noLeidos[c.cid] || 0;
   return h('button', { type: 'button', class: 'clienta' + (E.sel === c.cid ? ' sel' : ''), onclick: () => elegir(c.cid) },
     h('span', {}, h('span', { class: 'nom' }, c.nombre || 'Sin nombre'),
-      h('span', { class: 'sub' }, [toca ? `Paso ${c.paso || 0} · ${PASOS[c.paso || 0]}` : null, c.eleccion, c.contacto && c.nombre !== c.contacto ? c.contacto : null]
+      h('span', { class: 'sub' }, [toca ? `Paso ${pasoDe(c)} · ${PASOS[pasoDe(c)]}` : null, c.eleccion, c.contacto && c.nombre !== c.contacto ? c.contacto : null]
         .filter(Boolean).join(' · ') || (c.last_preview || ''))),
     h('span', { class: 'derecha' },
       toca ? h('span', { class: 'etiqueta' }, 'Te toca') : null,
@@ -517,12 +519,31 @@ function pintarDisenoVacio() {
     h('p', { class: 'meta' }, 'A la izquierda están tus clientas por paso. Las que dicen "Te toca" esperan algo de ti.')));
 }
 
+// Paso de la clienta: el que eligió Jay manda, hasta que el estado del diseño cambie después de esa elección.
+function pasoDe(c) {
+  if (c.paso_manual != null && (!c.paso_cuando || !c.paso_manual_en || new Date(c.paso_cuando) <= new Date(c.paso_manual_en))) return c.paso_manual;
+  return c.paso || 0;
+}
+async function cambiarPaso(c, i) {
+  if (i === pasoDe(c)) return;
+  if (!confirm(`¿Pasar a ${c.nombre || 'esta clienta'} al paso ${i} · ${PASOS[i]}?\n\nPuedes volver a cualquier paso cuando quieras.`)) return;
+  const antes = [c.paso_manual, c.paso_manual_en];
+  c.paso_manual = i; c.paso_manual_en = new Date().toISOString();
+  pintarLista(); pintarDiseno();
+  const { error } = await sb.from('prod_clientas').update({ paso_manual: i, paso_manual_en: c.paso_manual_en }).eq('cid', c.cid);
+  if (error) { [c.paso_manual, c.paso_manual_en] = antes; pintarLista(); pintarDiseno(); alert('No se pudo cambiar el paso: ' + error.message); return; }
+  toast({ titulo: `${c.nombre || 'Clienta'} · paso ${i}`, texto: PASOS_LARGO[i] });
+}
+
 function pintarDiseno() {
   const c = E.clientas.find((x) => x.cid === E.sel);
   if (!c) return pintarDisenoVacio();
-  const p = c.paso || 0;
+  const p = pasoDe(c);
   const pasos = h('div', { class: 'pasos', role: 'list' });
-  for (let i = 1; i <= 7; i++) pasos.append(h('div', { role: 'listitem', class: 'paso' + (i < p ? ' hecho' : i === p ? ' ahora' : ''), title: PASOS[i] }, h('i', {}, i), h('span', { class: 'lb' }, PASOS[i])));
+  // Cada paso es un botón: Jay puede regresar (o adelantar) a la clienta a cualquier paso, las veces que quiera.
+  for (let i = 1; i <= 7; i++) pasos.append(h('button', { type: 'button', role: 'listitem', class: 'paso' + (i < p ? ' hecho' : i === p ? ' ahora' : ''),
+    title: PASOS[i], 'aria-label': `Paso ${i} · ${PASOS[i]}`, 'aria-current': i === p ? 'step' : null, onclick: () => cambiarPaso(c, i) },
+    h('i', {}, i), h('span', { class: 'lb' }, PASOS[i])));
   const caja = [h('div', { class: 'tarjeta' },
     h('div', { class: 'cab-clienta' },
       h('div', {},
