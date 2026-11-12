@@ -347,7 +347,7 @@ async function cargarNoLeidos() {
   if (E.sel && E.noLeidos[E.sel]) marcarLeido(E.sel);
 }
 async function cargarChat(cid) {
-  const { data } = await sb.from('prod_mensajes').select('*').eq('cid', cid).order('sent_at', { ascending: false }).limit(200);
+  const { data } = await sb.from('prod_mensajes').select('*').eq('cid', cid).order('sent_at', { ascending: false }).limit(1000);
   if (E.sel !== cid) return;
   E.mensajes = (data || []).reverse();
   pintarChat(true);
