@@ -185,6 +185,23 @@ nav.abajo{display:none}
 .elige-foto button{flex:0 0 64px;height:64px;border-radius:10px;overflow:hidden;border:2px solid transparent;padding:0;background:var(--fondo)}
 .elige-foto button.si{border-color:var(--vino)}
 .elige-foto img{width:100%;height:100%;object-fit:cover}
+.tandas{display:flex;gap:6px;margin:0 0 6px}
+.tandas button{flex:1;min-height:42px;border-radius:12px;border:1px solid var(--linea);background:var(--fondo);font-weight:700;color:var(--gris);display:flex;align-items:center;justify-content:center;gap:8px}
+.tandas button.si{background:var(--vino);border-color:var(--vino);color:#fff}
+.tandas .cuenta{font-size:11px;font-weight:600;opacity:.8}
+.paso-t{font-size:13px;font-weight:700;color:var(--gris);margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.paso-t b{flex:0 0 22px;height:22px;border-radius:50%;background:var(--vino);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.base-t{display:flex;gap:12px;align-items:flex-start}
+.base-t .mini{flex:0 0 84px;aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:1px solid var(--linea);padding:0;background:var(--fondo)}
+.base-t .mini img{width:100%;height:100%;object-fit:cover}
+.busca-t{display:flex;gap:6px;flex-wrap:wrap}
+.busca-t input{flex:1 1 200px;min-height:40px;padding:0 10px;border:1px solid var(--linea);border-radius:10px;font-size:16px}
+.refs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;margin-top:8px}
+.ref{position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:3px solid transparent;padding:0;background:var(--fondo)}
+.ref img{width:100%;height:100%;object-fit:cover;display:block}
+.ref.si{border-color:var(--vino)}
+.ref .tilde{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:var(--vino);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+.franja{margin-top:16px;padding-top:12px;border-top:1px solid var(--linea);display:flex;flex-direction:column;gap:8px}
 .progreso{font-size:13px;padding:10px 12px;border-radius:12px;background:#FFF7E8;color:var(--ambar);border:1px dashed #E5C78F}
 .progreso.lista{background:#EEF6F0;color:var(--verde);border-color:#B9D9C3}
 .progreso.error{background:#FBEAEA;color:#9B1C1C;border-color:#E9B8B8}
@@ -470,7 +487,7 @@ function escuchar() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'prod_archivos' }, (p) => {
       const a = p.new; if (!a) return;
       if (a.tipo === 'catalogo') E.catalogo[a.ruta] = a.nota;
-      if (E.sel && (a.cid === E.sel || a.tipo === 'catalogo')) cargarArchivos(E.sel);
+      if (E.sel && (a.cid === E.sel || a.tipo === 'catalogo')) { clearTimeout(E.tRec); E.tRec = setTimeout(() => E.sel && cargarArchivos(E.sel), 600); }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'prod_ordenes' }, (p) => {
       const o = p.new; if (!o || o.cid !== E.sel) return;
@@ -615,61 +632,121 @@ function pintarRyzen() {
 setInterval(pintarRyzen, 30e3);
 const RAPIDOS = ['Recorta más los bordes', 'Quita el halo gris', 'Más parecida al modelo', 'Cambia el fondo', 'Letras más grandes y legibles', 'Que se parezca más a ella'];
 
-async function pedirGemini(c, datos) {
+async function pedirOrden(c, tipo, datos) {
   const { data: { user } } = await sb.auth.getUser();
-  const el = elegidos(c);
-  const cod = (t) => ((el.find((x) => x.tipo === t) || {}).ruta || '').match(/([SP]\d+)\.jpg$/);
-  const cuerpo = { nombre: c.nombre, colores: c.colores, sobre: cod('sobre') && cod('sobre')[1], portada: cod('portada') && cod('portada')[1], ...datos };
-  const { data, error } = await sb.from('prod_ordenes').insert({ cid: c.cid, tipo: 'gemini', datos: cuerpo, user_id: user && user.id }).select().single();
+  const { data, error } = await sb.from('prod_ordenes').insert({ cid: c.cid, tipo, datos, user_id: user && user.id }).select().single();
   if (error) { alert('No se pudo mandar a la Ryzen7: ' + error.message); return false; }
   E.ordenes.push(data); pintarDiseno();
   const l = E.latidos.ryzen7, vivo = l && Date.now() - new Date(l.visto).getTime() < 120e3;
-  toast({ titulo: 'Pedido a la Ryzen7', texto: vivo ? 'Las imágenes van apareciendo aquí en unos minutos.' : 'La Ryzen7 está apagada: empieza cuando se prenda.' });
+  toast({ titulo: 'Pedido a la Ryzen7', texto: vivo ? (tipo === 'pinterest' ? 'Las referencias aparecen aquí en 1 o 2 minutos.' : 'La imagen aparece aquí en 1 o 2 minutos.') : 'La Ryzen7 está apagada: empieza cuando se prenda.' });
   return true;
+}
+const codigoDe = (c, t) => (((elegidos(c).find((x) => x.tipo === t) || {}).ruta || '').match(/([SP]\d+)\.jpg$/) || [])[1] || null;
+async function pedirGemini(c, datos) {
+  return pedirOrden(c, 'gemini', { nombre: c.nombre, colores: c.colores, tema: temaDe(c), sobre: codigoDe(c, 'sobre'), portada: codigoDe(c, 'portada'), ...datos });
 }
 async function marcar(a, estado) {
   a.estado = a.estado === estado ? null : estado; pintarDiseno();
   const { error } = await sb.from('prod_archivos').update({ estado: a.estado }).eq('id', a.id);
   if (error) alert('No se pudo guardar: ' + error.message);
 }
+// temática: la que se nombra MÁS TARDE en la ficha (Hanna: «de princesas a VAQUERA» → vaquera)
+const TEMAS = ['vaquera', 'charra', 'princesa', 'mariposas', 'floral', 'flores', 'boho', 'rústica', 'tehuana', 'mexicana', 'tropical', 'encantada',
+  'bosque', 'parís', 'hollywood', 'sirena', 'girasoles', 'cenicienta', 'rapunzel', 'vintage', 'glam', 'minimalista'];
+function temaDe(c) {
+  const t = [...(c.pedidos || []).map((p) => p.texto), ...(c.datos || [])].join(' \n ').toLowerCase();
+  let mejor = null, pos = -1;
+  for (const k of TEMAS) { const i = t.lastIndexOf(k); if (i > pos) { pos = i; mejor = k; } }
+  return mejor;
+}
+function busquedaDe(c, grupo) {
+  return [grupo === 'sobre' ? 'sobre invitación XV' : 'portada invitación XV', temaDe(c), (c.colores || '').replace(/\bcon\b/g, ' ')]
+    .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+const PORTADAS_FOTO = ['P1', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
+const enMarcha = (o) => ['nueva', 'tomada', 'avance'].includes(o.estado);
+const grupoDeOrden = (o) => (o.datos && (o.datos.grupo || (o.datos.rehacer && o.datos.rehacer.grupo))) || null;
+function lineaOrden(o) {
+  const txt = { nueva: 'En cola: la Ryzen7 lo toma en segundos', tomada: 'La Ryzen7 lo tomó…' }[o.estado] || o.avance || o.estado;
+  const pre = o.tipo === 'pinterest' ? 'Pinterest: ' : o.datos && o.datos.rehacer ? 'Rehacer: ' : '';
+  return h('div', { class: 'progreso' + (o.estado === 'lista' ? ' lista' : o.estado === 'error' ? ' error' : ''), style: 'margin-top:6px' }, pre + txt);
+}
 
+// ---------- tandas: sobres y portadas, cada una con Pinterest y variaciones de a una ----------
 function variaciones(c) {
-  const t = h('div', { class: 'tarjeta' }, h('h2', {}, 'Variaciones · Gemini'));
-  const el = elegidos(c);
-  const ords = E.ordenes.filter((o) => o.tipo === 'gemini');
-  const ult = ords[ords.length - 1];
-  if (ult) {
-    const txt = { nueva: 'En cola: la Ryzen7 lo toma en segundos', tomada: 'La Ryzen7 lo tomó…' }[ult.estado] || ult.avance || ult.estado;
-    t.append(h('div', { class: 'progreso' + (ult.estado === 'lista' ? ' lista' : ult.estado === 'error' ? ' error' : '') },
-      (ult.datos && ult.datos.rehacer ? 'Rehacer: ' : '') + txt));
-  }
-  const ocupada = ult && ['nueva', 'tomada', 'avance'].includes(ult.estado);
-  // generar
-  if (!el.length) t.append(h('p', { class: 'meta' }, 'Primero tiene que elegir sobre y portada (o anótalos en su ficha).'));
-  else {
-    const fotos = E.archivos.filter((a) => a.tipo === 'foto');
-    if (fotos.length && !E.fotoGen) E.fotoGen = fotos[0].ruta;
-    const nota = h('textarea', { placeholder: 'Indicaciones para Gemini (opcional). Ej.: corona plateada, mariposas rosas, sin dorado' });
-    const gen = h('div', { class: 'gen' },
-      fotos.length ? h('div', {}, h('div', { class: 'sub-mesa', style: 'margin-top:4px' }, 'Su foto para la portada'),
+  E.tanda = E.tanda || 'sobre';
+  const g = E.tanda;
+  const t = h('div', { class: 'tarjeta' }, h('h2', {}, 'Diseño · Gemini'));
+  const vars = E.archivos.filter((a) => a.tipo === 'variacion');
+  const aprob = (gr) => vars.filter((a) => (a.grupo || 'portada') === gr && a.estado === 'aprobada');
+  t.append(h('div', { class: 'tandas', role: 'tablist' }, ...[['sobre', 'Sobres'], ['portada', 'Portadas']].map(([k, n]) =>
+    h('button', { type: 'button', role: 'tab', 'aria-selected': String(g === k), class: g === k ? 'si' : null, onclick: () => { E.tanda = k; pintarDiseno(); } },
+      n, h('span', { class: 'cuenta' }, aprob(k).length + ' ✓')))));
+  const cod = codigoDe(c, g);
+  if (!cod) { t.append(h('p', { class: 'meta' }, `Todavía no eligió ${g} (o anótalo en su ficha como S#/P#).`)); return t; }
+  const ords = E.ordenes.filter((o) => (o.tipo === 'gemini' || o.tipo === 'pinterest') && grupoDeOrden(o) === g);
+  const pin = ords.filter((o) => o.tipo === 'pinterest'), gem = ords.filter((o) => o.tipo === 'gemini');
+  // 1. base
+  const base = elegidos(c).find((x) => x.tipo === g), ub = base && enlace(base.miniatura || base.ruta);
+  const ms = muestras(c.colores), tema = temaDe(c);
+  t.append(h('div', { class: 'paso-t' }, h('b', {}, '1'), 'Base'),
+    h('div', { class: 'base-t' },
+      h('button', { type: 'button', class: 'mini', onclick: () => base && ver(base), 'aria-label': 'Ver el modelo' }, ub ? h('img', { src: ub, alt: '' }) : null),
+      h('div', {}, h('b', {}, base ? base.nota || cod : cod),
+        ms.length ? h('div', { class: 'muestras', style: 'margin-top:6px' }, ...ms.map(([, nom, hex]) => h('span', { class: 'muestra' }, h('i', { style: 'background:' + hex }), nom))) : null,
+        h('div', { class: 'meta', style: 'margin-top:4px' }, (c.colores || 'Sin colores en la ficha') + (tema ? ' · temática ' + tema : '')))));
+  // 2. referencias de Pinterest
+  E.q = E.q || {};
+  const clave = c.cid + g;
+  if (E.q[clave] == null) E.q[clave] = busquedaDe(c, g);
+  const refs = E.archivos.filter((a) => a.tipo === 'referencia' && a.grupo === g).sort((a, b) => (b.estado === 'marcada') - (a.estado === 'marcada'));
+  const marcadas = refs.filter((a) => a.estado === 'marcada');
+  const q = h('input', { type: 'search', value: E.q[clave], 'aria-label': 'Palabras para buscar en Pinterest', oninput: (ev) => { E.q[clave] = ev.target.value; } });
+  const pinVivo = pin.find(enMarcha);
+  const buscar = async (ev, mas) => {
+    const texto = q.value.trim(); if (!texto) return q.focus();
+    ev.target.disabled = true;
+    const ya = mas ? pin.filter((o) => o.datos && o.datos.q === texto && o.estado === 'lista').reduce((s, o) => s + (o.datos.cantidad || 12), 0) : 0;
+    if (!(await pedirOrden(c, 'pinterest', { grupo: g, q: texto, cantidad: mas ? 10 : 16, saltar: ya }))) ev.target.disabled = false;
+  };
+  t.append(h('div', { class: 'paso-t' }, h('b', {}, '2'), `Referencias de Pinterest · marca 2 a 4 (${marcadas.length} marcadas)`),
+    h('div', { class: 'busca-t' }, q,
+      h('button', { class: 'btn chico', type: 'button', disabled: pinVivo ? true : null, onclick: (ev) => buscar(ev, false) }, 'Buscar'),
+      refs.length ? h('button', { class: 'btn chico sec', type: 'button', disabled: pinVivo ? true : null, onclick: (ev) => buscar(ev, true) }, '10 más') : null));
+  if (pin.length) t.append(lineaOrden(pin[pin.length - 1]));
+  if (refs.length) t.append(h('div', { class: 'refs' }, ...refs.slice(0, 60).map((a) => {
+    const u = enlace(a.miniatura || a.ruta), si = a.estado === 'marcada';
+    return h('button', { type: 'button', class: 'ref' + (si ? ' si' : ''), 'aria-pressed': String(si), 'aria-label': (si ? 'Desmarcar: ' : 'Marcar: ') + (a.nota || 'referencia'),
+      onclick: () => { if (!si && marcadas.length >= 4) return toast({ titulo: 'Máximo 4', texto: 'Desmarca una para marcar otra.' }); marcar(a, 'marcada'); } },
+      u ? h('img', { src: u, alt: '', loading: 'lazy' }) : null, si ? h('span', { class: 'tilde' }, '✓') : null);
+  })));
+  // 3. generar de a una
+  const fotos = E.archivos.filter((a) => a.tipo === 'foto');
+  const conFoto = g === 'portada' && PORTADAS_FOTO.includes(cod) && fotos.length;
+  if (conFoto && !E.fotoGen) E.fotoGen = fotos[0].ruta;
+  const nota = h('textarea', { placeholder: 'Indicaciones (opcional). Ej.: sombrero vaquero rosa, herraduras plateadas, sin dorado' });
+  const enCola = gem.filter(enMarcha).length;
+  const n = vars.filter((a) => (a.grupo || 'portada') === g).length + enCola + 1;
+  t.append(h('div', { class: 'paso-t' }, h('b', {}, '3'), 'Variaciones de a una'),
+    h('div', { class: 'gen' },
+      conFoto ? h('div', {}, h('div', { class: 'meta' }, 'Su foto para la portada'),
         h('div', { class: 'elige-foto' }, ...fotos.slice(0, 12).map((a) => h('button', { type: 'button', class: E.fotoGen === a.ruta ? 'si' : null,
           'aria-label': 'Usar esta foto', onclick: () => { E.fotoGen = a.ruta; pintarDiseno(); } }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null)))) : null,
       nota,
-      h('button', { class: 'btn', type: 'button', disabled: ocupada || null, onclick: async (ev) => {
+      h('button', { class: 'btn', type: 'button', onclick: async (ev) => {
         ev.target.disabled = true;
-        if (!(await pedirGemini(c, { que: 'ambos', cantidad: 3, foto: fotos.length ? E.fotoGen : null, instruccion: nota.value.trim() }))) ev.target.disabled = false;
-      } }, ocupada ? 'La Ryzen7 está trabajando en esta clienta…' : `Generar 3 sobres + 3 portadas (${el.map((x) => (x.ruta.match(/([SP]\d+)/) || [])[1]).filter(Boolean).join(' + ')})`));
-    t.append(gen);
-  }
-  // resultados
-  const vars = E.archivos.filter((a) => a.tipo === 'variacion');
-  for (const [grupo, titulo] of [['sobre', 'Sobres'], ['portada', 'Portadas']]) {
-    const lista = vars.filter((a) => (a.grupo || 'portada') === grupo).sort((a, b) => (a.estado === 'descartada') - (b.estado === 'descartada'));
-    if (!lista.length) continue;
-    t.append(h('div', { class: 'sub-mesa' }, `${titulo} (${lista.filter((a) => a.estado === 'aprobada').length} aprobadas de ${lista.length})`),
-      h('div', { class: 'varias' }, ...lista.map((a) => tarjetaVar(c, a))));
-  }
-  if (!vars.length && !ult) t.append(h('p', { class: 'meta', style: 'margin:10px 0 0' }, 'Aquí aparecen las imágenes de la Ryzen7, cada una con Aprobar o Rehacer.'));
+        const ok = await pedirGemini(c, { modo: 'uno', grupo: g, numero: n, refs: marcadas.map((a) => a.ruta), foto: conFoto ? E.fotoGen : null, instruccion: nota.value.trim() });
+        if (!ok) ev.target.disabled = false;
+      } }, `Generar 1 ${g} (${cod}${marcadas.length ? ' + ' + marcadas.length + ' ref.' : ''})` + (enCola ? ` · ${enCola} en cola` : ''))));
+  for (const o of gem.slice(-2)) t.append(lineaOrden(o));
+  const lista = vars.filter((a) => (a.grupo || 'portada') === g).sort((a, b) => (a.estado === 'descartada') - (b.estado === 'descartada'));
+  if (lista.length) t.append(h('div', { class: 'varias', style: 'margin-top:10px' }, ...lista.map((a) => tarjetaVar(c, a))));
+  else t.append(h('p', { class: 'meta', style: 'margin:8px 0 0' }, 'Aquí aparece cada imagen con Aprobar, Rehacer o Descartar.'));
+  // franja: lo aprobado para el PDF
+  const as = aprob('sobre'), ap = aprob('portada');
+  t.append(h('div', { class: 'franja' }, h('div', { class: 'meta' }, h('b', {}, 'Elegidas para el PDF'), ` · sobres ${as.length} / portadas ${ap.length}`),
+    as.length + ap.length ? h('div', { class: 'elige-foto' }, ...[...as, ...ap].map((a) => h('button', { type: 'button', onclick: () => ver(a), 'aria-label': a.nota || 'Aprobada' },
+      enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null))) : null));
   return t;
 }
 function tarjetaVar(c, a) {
@@ -682,7 +759,7 @@ function tarjetaVar(c, a) {
       h('div', { class: 'acc' },
         h('button', { class: 'btn chico', type: 'button', onclick: async () => {
           const ins = caja.value.trim(); if (!ins) return caja.focus();
-          E.rehacer = null; await pedirGemini(c, { rehacer: { ruta: a.ruta, grupo: a.grupo || 'portada' }, instruccion: ins, cantidad: 1 });
+          E.rehacer = null; await pedirGemini(c, { grupo: a.grupo || 'portada', rehacer: { ruta: a.ruta, grupo: a.grupo || 'portada' }, instruccion: ins, cantidad: 1 });
         } }, 'Rehacer'),
         h('button', { class: 'btn chico sec', type: 'button', onclick: () => { E.rehacer = null; pintarDiseno(); } }, 'Cancelar'))));
   } else {
@@ -739,7 +816,7 @@ function mesa(c) {
       h('p', { class: 'meta', style: 'margin:6px 0 0' }, c.colores));
   }
   // 3. sus fotos (y videos)
-  const fotos = E.archivos.filter((a) => a.tipo === 'foto' || a.tipo === 'video' || a.tipo === 'referencia');
+  const fotos = E.archivos.filter((a) => a.tipo === 'foto' || a.tipo === 'video' || (a.tipo === 'referencia' && !a.grupo));
   t.append(h('div', { class: 'sub-mesa' }, `Sus fotos (${fotos.length})`));
   if (fotos.length) {
     t.append(h('div', { class: 'fotos' }, ...fotos.slice(0, 24).map((a) => {
