@@ -1,0 +1,17 @@
+{
+  "name": "Producción · Invitaciones de Amor",
+  "short_name": "Producción",
+  "description": "Tablero de producción de Invitaciones de Amor",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F2EE",
+  "theme_color": "#6B1A20",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icono-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
