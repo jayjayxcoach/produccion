@@ -215,6 +215,20 @@ nav.abajo{display:none}
 .compartir select{min-height:44px;border:1px solid var(--linea);border-radius:10px;padding:0 10px;font-size:16px;background:#fff}
 .compartir .acc{display:flex;gap:8px;margin-top:6px}.compartir .acc .btn{flex:1}
 .compartir .refs img{width:100%;height:100%;object-fit:cover}
+.diseno{border:1px solid var(--linea);border-radius:14px;padding:12px;margin-top:10px;display:flex;flex-direction:column;gap:8px;background:#fff}
+.diseno.listo{border-color:var(--verde)}
+.dis-tit{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--vino)}
+.diseno textarea{width:100%;min-height:76px;padding:8px 10px;border:1px solid var(--linea);border-radius:10px;font-size:16px;resize:vertical}
+.acc-dis{display:flex;gap:6px;flex-wrap:wrap}.acc-dis .btn{flex:1 1 auto}
+.refs-num{display:flex;gap:8px;flex-wrap:wrap}
+.rn{position:relative;width:86px;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:var(--fondo);border:1px solid var(--linea)}
+.rn .toca{position:absolute;inset:0;border:none;padding:0;background:none;width:100%;height:100%}
+.rn .toca img{width:100%;height:100%;object-fit:cover;display:block}
+.rn .num{position:absolute;bottom:4px;left:4px;min-width:22px;height:22px;border-radius:11px;background:var(--vino);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.rn .quita{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--vino);font-size:17px;font-weight:700;line-height:1}
+.pedido-txt{margin:0;font-size:13.5px;color:var(--gris);font-style:italic}
+.varias.tres{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+@media (max-width:420px){.varias.tres{grid-template-columns:1fr 1fr}}
 .progreso{font-size:13px;padding:10px 12px;border-radius:12px;background:#FFF7E8;color:var(--ambar);border:1px dashed #E5C78F}
 .progreso.lista{background:#EEF6F0;color:var(--verde);border-color:#B9D9C3}
 .progreso.error{background:#FBEAEA;color:#9B1C1C;border-color:#E9B8B8}
@@ -632,7 +646,10 @@ function pintarDiseno() {
   // En el paso 3 (Variaciones) la tarjeta de Gemini va primero; en los demás pasos, después de la mesa.
   if (p === 3) caja.splice(1, 0, variaciones(c), mesa(c));
   else caja.splice(tocas.length ? 2 : 1, 0, mesa(c), variaciones(c));
+  const foco = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.k;
+  const sel = foco ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
   $('p-diseno').replaceChildren(...caja);
+  if (foco) { const el = document.querySelector(`[data-k="${foco}"]`); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(sel[0], sel[1]); } catch (_) {} } }
 }
 
 // ---------- variaciones con Gemini en la Ryzen7 (fase 3) ----------
@@ -713,67 +730,35 @@ function variaciones(c) {
       h('div', {}, h('b', {}, base ? base.nota || cod : cod),
         ms.length ? h('div', { class: 'muestras', style: 'margin-top:6px' }, ...ms.map(([, nom, hex]) => h('span', { class: 'muestra' }, h('i', { style: 'background:' + hex }), nom))) : null,
         h('div', { class: 'meta', style: 'margin-top:4px' }, (c.colores || 'Sin colores en la ficha') + (tema ? ' · temática ' + tema : '')))));
-  // 2. MIS referencias (las que sube Jay o comparte desde Pinterest); la búsqueda automática va plegada abajo
+  // 2. DISEÑOS: cada uno con sus referencias (numeradas) + lo que Jay quiere de cada una → 3 variaciones → elige 1
   const visibles = E.archivos.filter((a) => a.tipo === 'referencia' && a.grupo === g && a.estado !== 'descartada');
-  const mias = visibles.filter((a) => a.origen === 'jay'), auto = visibles.filter((a) => a.origen !== 'jay');
-  const marcadas = visibles.filter((a) => a.estado === 'marcada');
+  const auto = visibles.filter((a) => a.origen !== 'jay');
   const pin = ords.filter((o) => o.tipo === 'pinterest'), gem = ords.filter((o) => o.tipo === 'gemini');
   const pinVivo = pin.find(enMarcha);
-  const archivo = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'oculto', onchange: async (ev) => {
-    const fs = [...ev.target.files]; ev.target.value = '';
-    if (fs.length) await subirReferencias(c, g, fs);
-  } });
-  const enlacePin = h('input', { type: 'url', placeholder: 'o pega el enlace de un pin', 'aria-label': 'Enlace de un pin de Pinterest' });
-  const cuadro = (a) => {
-    const u = enlace(a.miniatura || a.ruta), si = a.estado === 'marcada';
-    return h('div', { class: 'ref' + (si ? ' si' : '') },
-      h('button', { type: 'button', class: 'toca', 'aria-pressed': String(si), 'aria-label': (si ? 'Desmarcar: ' : 'Marcar: ') + (a.nota || 'referencia'),
-        onclick: () => { if (!si && marcadas.length >= 4) return toast({ titulo: 'Máximo 4', texto: 'Desmarca una para marcar otra.' }); marcar(a, 'marcada'); } },
-        u ? h('img', { src: u, alt: '', loading: 'lazy' }) : null, si ? h('span', { class: 'tilde' }, '✓') : null),
-      h('button', { type: 'button', class: 'quita', 'aria-label': 'Quitar esta referencia', onclick: () => marcar(a, 'descartada') }, '×'));
-  };
-  t.append(h('div', { class: 'paso-t' }, h('b', {}, '2'), `Mis referencias · marca hasta 3 (${marcadas.length} marcadas)`),
-    h('button', { type: 'button', class: 'btn subir-ref', onclick: () => archivo.click() }, '+ Subir referencias (galería o capturas)'), archivo,
-    h('div', { class: 'busca-t', style: 'margin-top:6px' }, enlacePin,
-      h('button', { class: 'btn chico sec', type: 'button', onclick: async (ev) => {
-        const u = enlacePin.value.trim(); if (!/^https:\/\/([a-z]+\.)?(pinterest\.[a-z.]+|pin\.it)\//i.test(u)) return alert('Pega un enlace de Pinterest (pinterest.com o pin.it).');
-        ev.target.disabled = true; if (!(await pedirOrden(c, 'pinterest', { grupo: g, url: u }))) ev.target.disabled = false;
-      } }, 'Traer pin')));
-  if (E.subiendo) t.append(h('div', { class: 'progreso' }, E.subiendo));
-  if (mias.length) t.append(h('div', { class: 'refs' }, ...mias.map(cuadro)));
-  else t.append(h('p', { class: 'meta', style: 'margin:8px 0 0' }, 'Sube 2 o 3 diseños que te gusten (capturas de Pinterest o de tu galería). También puedes compartir un pin desde la app de Pinterest → «Producción».'));
-  // 3. generar: uno «así» por cada referencia marcada
   const fotos = E.archivos.filter((a) => a.tipo === 'foto');
   const conFoto = g === 'portada' && PORTADAS_FOTO.includes(cod) && fotos.length;
   if (conFoto && !E.fotoGen) E.fotoGen = fotos[0].ruta;
-  const nota = h('textarea', { placeholder: 'Indicaciones (opcional). Ej.: sombrero vaquero rosa, herraduras plateadas, sin dorado' });
-  const enCola = gem.filter(enMarcha).length;
-  const hechas = vars.filter((a) => (a.grupo || 'portada') === g).length;
-  const comun = () => ({ modo: 'uno', grupo: g, foto: conFoto ? E.fotoGen : null, instruccion: nota.value.trim() });
-  t.append(h('div', { class: 'paso-t' }, h('b', {}, '3'), 'Crear diseños'),
-    h('div', { class: 'gen' },
-      conFoto ? h('div', {}, h('div', { class: 'meta' }, 'Su foto para la portada'),
-        h('div', { class: 'elige-foto' }, ...fotos.slice(0, 12).map((a) => h('button', { type: 'button', class: E.fotoGen === a.ruta ? 'si' : null,
-          'aria-label': 'Usar esta foto', onclick: () => { E.fotoGen = a.ruta; pintarDiseno(); } }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null)))) : null,
-      nota,
-      h('button', { class: 'btn', type: 'button', disabled: marcadas.length ? null : true, onclick: async (ev) => {
-        ev.target.disabled = true;
-        const usar = marcadas.slice(0, 3);
-        for (let i = 0; i < usar.length; i++) {
-          if (!(await pedirGemini(c, { ...comun(), asi: true, numero: hechas + enCola + i + 1, refs: [usar[i].ruta] }))) { ev.target.disabled = false; return; }
-        }
-      } }, marcadas.length ? `Crear uno así por cada una (${Math.min(marcadas.length, 3)})` + (enCola ? ` · ${enCola} en cola` : '') : 'Marca 1 a 3 referencias para crear'),
-      marcadas.length > 1 ? h('button', { class: 'btn sec', type: 'button', onclick: async (ev) => {
-        ev.target.disabled = true;
-        if (!(await pedirGemini(c, { ...comun(), numero: hechas + enCola + 1, refs: marcadas.map((a) => a.ruta) }))) ev.target.disabled = false;
-      } }, `Generar 1 mezclando las ${marcadas.length} (${cod})`) : null));
-  for (const o of gem.slice(-3)) t.append(lineaOrden(o));
-  const lista = vars.filter((a) => (a.grupo || 'portada') === g).sort((a, b) => (a.estado === 'descartada') - (b.estado === 'descartada'));
-  if (lista.length) t.append(h('div', { class: 'varias', style: 'margin-top:10px' }, ...lista.map((a) => tarjetaVar(c, a))));
-  else t.append(h('p', { class: 'meta', style: 'margin:8px 0 0' }, 'Aquí aparece cada diseño con Aprobar, Rehacer o Descartar.'));
+  const clave = c.cid + g;
+  const borr = borradores(clave);
+  const porDiseno = {};
+  for (const o of gem) { const n = o.datos && o.datos.pedido; if (n) (porDiseno[n] = porDiseno[n] || []).push(o); }
+  const nums = [...new Set([...Object.keys(porDiseno), ...Object.keys(borr)].map(Number))].sort((a, b) => a - b);
+  if (!nums.length) { borr[1] = { refs: [], texto: '' }; nums.push(1); }
+  t.append(h('div', { class: 'paso-t' }, h('b', {}, '2'), 'Diseños · cada uno da 3 variaciones y tú eliges 1'));
+  for (const n of nums) t.append(tarjetaDiseno(c, g, n, porDiseno[n] || [], borr, vars, visibles, conFoto ? fotos : null, pinVivo));
+  t.append(h('button', { type: 'button', class: 'btn sec', style: 'width:100%;margin-top:10px', onclick: () => {
+    borr[Math.max(0, ...nums) + 1] = { refs: [], texto: '' }; guardarBorradores(clave); pintarDiseno();
+  } }, '+ Nuevo diseño'));
+  // lo generado antes de los «diseños» (pruebas viejas), plegado
+  const deDisenos = new Set(Object.values(porDiseno).flat().map((o) => o.id));
+  const sueltas = vars.filter((a) => (a.grupo || 'portada') === g && !deDisenos.has(a.orden_id));
+  if (sueltas.length) t.append(h('details', { class: 'auto-pin' }, h('summary', {}, `Pruebas anteriores (${sueltas.length})`),
+    h('div', { class: 'varias', style: 'margin-top:8px' }, ...sueltas.map((a) => tarjetaVar(c, a)))));
+  const cuadro = (a) => h('div', { class: 'ref' }, h('button', { type: 'button', class: 'toca', onclick: () => ver(a), 'aria-label': 'Ver referencia' },
+    enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '', loading: 'lazy' }) : null),
+    h('button', { type: 'button', class: 'quita', 'aria-label': 'Quitar esta referencia', onclick: () => marcar(a, 'descartada') }, '×'));
   // búsqueda automática en Pinterest (opcional, plegada)
   E.q = E.q || {};
-  const clave = c.cid + g;
   if (E.q[clave] == null) E.q[clave] = busquedaDe(c, g);
   const q = h('input', { type: 'search', value: E.q[clave], 'aria-label': 'Palabras para buscar en Pinterest', oninput: (ev) => { E.q[clave] = ev.target.value; } });
   const buscar = async (ev, mas) => {
@@ -798,11 +783,11 @@ function variaciones(c) {
       enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null))) : null));
   return t;
 }
-function tarjetaVar(c, a) {
+function tarjetaVar(c, a, opc = {}) {
   const u = enlace(a.miniatura || a.ruta);
   const ur = a.de_ref && enlace(a.de_ref);
-  const pie = h('div', { class: 'pie' }, a.estado === 'aprobada' ? h('span', { class: 'sello' }, 'Aprobada') : null,
-    ur ? h('span', { class: 'de-ref' }, h('img', { src: ur, alt: 'Referencia' }), 'Así, de tu referencia') : null, h('span', {}, a.nota || ''));
+  const pie = h('div', { class: 'pie' }, a.estado === 'aprobada' && !opc.hermanos ? h('span', { class: 'sello' }, 'Aprobada') : null,
+    ur && !opc.hermanos ? h('span', { class: 'de-ref' }, h('img', { src: ur, alt: 'Referencia' }), 'Así, de tu referencia') : null, h('span', {}, a.nota || ''));
   if (E.rehacer === a.id) {
     const caja = h('textarea', { placeholder: '¿Qué cambio? Con tus palabras' });
     pie.append(h('div', { class: 'rehacer' }, caja,
@@ -810,17 +795,122 @@ function tarjetaVar(c, a) {
       h('div', { class: 'acc' },
         h('button', { class: 'btn chico', type: 'button', onclick: async () => {
           const ins = caja.value.trim(); if (!ins) return caja.focus();
-          E.rehacer = null; await pedirGemini(c, { grupo: a.grupo || 'portada', rehacer: { ruta: a.ruta, grupo: a.grupo || 'portada' }, instruccion: ins, cantidad: 1 });
+          E.rehacer = null; await pedirGemini(c, { grupo: a.grupo || 'portada', pedido: opc.pedido || null, rehacer: { ruta: a.ruta, grupo: a.grupo || 'portada' }, instruccion: ins, cantidad: 1 });
         } }, 'Rehacer'),
         h('button', { class: 'btn chico sec', type: 'button', onclick: () => { E.rehacer = null; pintarDiseno(); } }, 'Cancelar'))));
   } else {
     pie.append(h('div', { class: 'acc' },
-      h('button', { class: 'btn chico' + (a.estado === 'aprobada' ? '' : ' sec'), type: 'button', onclick: () => marcar(a, 'aprobada') }, a.estado === 'aprobada' ? '✓ Aprobada' : 'Aprobar'),
+      h('button', { class: 'btn chico' + (a.estado === 'aprobada' ? '' : ' sec'), type: 'button', onclick: () => (opc.hermanos ? elegirUna(a, opc.hermanos) : marcar(a, 'aprobada')) },
+        a.estado === 'aprobada' ? (opc.hermanos ? '✓ Elegida' : '✓ Aprobada') : (opc.hermanos ? 'Elegir esta' : 'Aprobar')),
       h('button', { class: 'btn chico sec', type: 'button', onclick: () => { E.rehacer = a.id; pintarDiseno(); } }, 'Rehacer'),
       h('button', { class: 'btn chico sec', type: 'button', 'aria-label': a.estado === 'descartada' ? 'Recuperar' : 'Descartar', onclick: () => marcar(a, 'descartada') }, a.estado === 'descartada' ? 'Recuperar' : 'Descartar')));
   }
   return h('div', { class: 'var' + (a.estado ? ' ' + a.estado : '') },
     h('button', { type: 'button', class: 'img', onclick: () => ver(a), 'aria-label': 'Ver grande' }, u ? h('img', { src: u, alt: a.nota || 'Variación', loading: 'lazy' }) : null), pie);
+}
+
+// ---------- un «diseño»: referencias numeradas + lo que Jay quiere de cada una → 3 variaciones → elige 1 ----------
+function borradores(clave) {
+  E.borr = E.borr || {};
+  if (!E.borr[clave]) {
+    try { E.borr[clave] = JSON.parse(localStorage.getItem('borr:' + clave) || '{}'); } catch (_) { E.borr[clave] = {}; }
+  }
+  return E.borr[clave];
+}
+function guardarBorradores(clave) {
+  try { localStorage.setItem('borr:' + clave, JSON.stringify(E.borr[clave] || {})); } catch (_) {}
+}
+async function elegirUna(a, hermanos) {
+  const ya = a.estado === 'aprobada';
+  for (const x of hermanos) if (x.id !== a.id && x.estado === 'aprobada') {
+    x.estado = null; await sb.from('prod_archivos').update({ estado: null }).eq('id', x.id);
+  }
+  a.estado = ya ? null : 'aprobada'; pintarDiseno();
+  const { error } = await sb.from('prod_archivos').update({ estado: a.estado }).eq('id', a.id);
+  if (error) alert('No se pudo guardar: ' + error.message);
+}
+function miniRefs(rutas, quitar) {
+  return h('div', { class: 'refs-num' }, ...rutas.map((r, i) => h('div', { class: 'rn' },
+    h('button', { type: 'button', class: 'toca', onclick: () => ver({ ruta: r, tipo: 'referencia' }), 'aria-label': 'Ver referencia ' + (i + 1) },
+      enlace(r) ? h('img', { src: enlace(r), alt: '' }) : null),
+    h('span', { class: 'num' }, String(i + 1)),
+    quitar ? h('button', { type: 'button', class: 'quita', 'aria-label': 'Sacar la referencia ' + (i + 1), onclick: () => quitar(i) }, '×') : null)));
+}
+function tarjetaDiseno(c, g, n, ords, borr, vars, visibles, fotos, pinVivo) {
+  const clave = c.cid + g, b = borr[n];
+  const ids = new Set(ords.map((o) => o.id));
+  const mias = vars.filter((a) => ids.has(a.orden_id)).sort((x, y) => String(x.creado).localeCompare(String(y.creado)));
+  const elegida = mias.find((a) => a.estado === 'aprobada');
+  const ult = ords[ords.length - 1];
+  const t = h('div', { class: 'diseno' + (elegida ? ' listo' : '') },
+    h('div', { class: 'dis-tit' }, h('b', {}, `${g === 'sobre' ? 'Sobre' : 'Portada'} ${n}`), elegida ? h('span', { class: 'sello' }, '✓ Elegido') : null));
+  const guardar = () => guardarBorradores(clave);
+  const pedir = async (datos) => {
+    const ok = await pedirGemini(c, { modo: 'pedido', grupo: g, pedido: n, cantidad: 3, foto: fotos ? E.fotoGen : null, ...datos });
+    if (ok) { delete borr[n]; guardar(); pintarDiseno(); }
+    return ok;
+  };
+  if (b) {
+    // editando: referencias, qué quiere de cada una, generar
+    const archivo = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'oculto', onchange: async (ev) => {
+      const fs = [...ev.target.files]; ev.target.value = '';
+      const rutas = fs.length ? await subirReferencias(c, g, fs) : [];
+      b.refs = [...b.refs, ...rutas].slice(0, 4); guardar(); pintarDiseno();
+    } });
+    if (b.refs.length) t.append(miniRefs(b.refs, (i) => { b.refs.splice(i, 1); guardar(); pintarDiseno(); }));
+    const abierto = E.picker === clave + n;
+    t.append(h('div', { class: 'acc-dis' },
+      h('button', { type: 'button', class: 'btn chico', onclick: () => archivo.click(), disabled: b.refs.length >= 4 ? true : null }, '+ Subir referencias'), archivo,
+      visibles.length ? h('button', { type: 'button', class: 'btn chico sec', onclick: () => { E.picker = abierto ? null : clave + n; pintarDiseno(); } },
+        abierto ? 'Cerrar' : `Elegir de las subidas (${visibles.length})`) : null));
+    if (E.subiendo) t.append(h('div', { class: 'progreso', style: 'margin-top:6px' }, E.subiendo));
+    if (abierto) {
+      const enlacePin = h('input', { type: 'url', placeholder: 'o pega el enlace de un pin', 'aria-label': 'Enlace de un pin de Pinterest' });
+      t.append(h('div', { class: 'refs' }, ...visibles.map((a) => {
+        const k = b.refs.indexOf(a.ruta), u = enlace(a.miniatura || a.ruta);
+        return h('div', { class: 'ref' + (k >= 0 ? ' si' : '') },
+          h('button', { type: 'button', class: 'toca', 'aria-pressed': String(k >= 0), 'aria-label': k >= 0 ? 'Sacar del diseño' : 'Usar en este diseño', onclick: () => {
+            if (k >= 0) b.refs.splice(k, 1); else if (b.refs.length >= 4) return toast({ titulo: 'Máximo 4', texto: 'Saca una para poner otra.' }); else b.refs.push(a.ruta);
+            guardar(); pintarDiseno();
+          } }, u ? h('img', { src: u, alt: '', loading: 'lazy' }) : null, k >= 0 ? h('span', { class: 'tilde' }, String(k + 1)) : null),
+          h('button', { type: 'button', class: 'quita', 'aria-label': 'Borrar esta referencia', onclick: () => marcar(a, 'descartada') }, '×'));
+      })), h('div', { class: 'busca-t', style: 'margin-top:6px' }, enlacePin,
+        h('button', { class: 'btn chico sec', type: 'button', disabled: pinVivo ? true : null, onclick: async (ev) => {
+          const u = enlacePin.value.trim(); if (!/^https:\/\/([a-z]+\.)?(pinterest\.[a-z.]+|pin\.it)\//i.test(u)) return alert('Pega un enlace de Pinterest (pinterest.com o pin.it).');
+          ev.target.disabled = true; if (!(await pedirOrden(c, 'pinterest', { grupo: g, url: u }))) ev.target.disabled = false;
+        } }, 'Traer pin')));
+    }
+    if (fotos) t.append(h('div', { class: 'meta', style: 'margin-top:8px' }, 'Su foto para la portada'),
+      h('div', { class: 'elige-foto' }, ...fotos.slice(0, 12).map((a) => h('button', { type: 'button', class: E.fotoGen === a.ruta ? 'si' : null,
+        'aria-label': 'Usar esta foto', onclick: () => { E.fotoGen = a.ruta; pintarDiseno(); } }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null))));
+    const caja = h('textarea', { 'data-k': 'dis-' + clave + n, value: b.texto || '', rows: 3,
+      placeholder: b.refs.length > 1 ? 'Qué quieres de cada una. Ej.: de la 1 el castillo de fondo, de la 2 el sobre, puesto sobre un pedestal en rosa y plata.'
+        : 'Qué quieres. Ej.: este mismo sobre pero en rosa y plata, con sombrero vaquero y flores.',
+      oninput: (ev) => { b.texto = ev.target.value; guardar(); } });
+    caja.value = b.texto || '';
+    t.append(caja, h('div', { class: 'acc-dis' },
+      h('button', { type: 'button', class: 'btn', onclick: async (ev) => {
+        if (!b.refs.length && !(b.texto || '').trim()) return alert('Pon al menos una referencia o escribe lo que quieres.');
+        ev.target.disabled = true;
+        if (!(await pedir({ refs: b.refs, instruccion: (b.texto || '').trim() }))) ev.target.disabled = false;
+      } }, 'Generar 3 variaciones'),
+      ords.length ? h('button', { type: 'button', class: 'btn sec', onclick: () => { delete borr[n]; guardar(); pintarDiseno(); } }, 'Cancelar') : null));
+  } else if (ult) {
+    // ya generado: lo que se pidió, y botones para pedir más
+    const d = ult.datos || {};
+    if ((d.refs || []).length) t.append(miniRefs(d.refs));
+    if (d.instruccion) t.append(h('p', { class: 'pedido-txt' }, '«' + d.instruccion + '»'));
+    const vivo = ords.some(enMarcha);
+    t.append(h('div', { class: 'acc-dis' },
+      h('button', { type: 'button', class: 'btn chico sec', disabled: vivo ? true : null, onclick: async (ev) => {
+        ev.target.disabled = true; if (!(await pedir({ refs: d.refs || [], instruccion: d.instruccion || '' }))) ev.target.disabled = false;
+      } }, '3 más igual'),
+      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { borr[n] = { refs: [...(d.refs || [])], texto: d.instruccion || '' }; guardar(); pintarDiseno(); } }, 'Cambiar y generar')));
+  }
+  for (const o of ords.filter(enMarcha)) t.append(lineaOrden(o));
+  if (ult && ult.estado === 'error') t.append(lineaOrden(ult));
+  if (mias.length) t.append(h('div', { class: 'varias tres' }, ...mias.map((a) => tarjetaVar(c, a, { pedido: n, hermanos: mias }))));
+  return t;
 }
 
 // ---------- referencias de Jay: se achican en el teléfono (máx. 1600 px) y suben al bucket privado ----------
@@ -841,8 +931,8 @@ function achicar(file, max = 1600) {
 }
 async function subirReferencias(c, grupo, files) {
   const imgs = [...files].filter((f) => /^image\//.test(f.type)).slice(0, 12);
-  if (!imgs.length) return alert('Elige imágenes (JPG, PNG o capturas).');
-  let n = 0;
+  if (!imgs.length) { alert('Elige imágenes (JPG, PNG o capturas).'); return []; }
+  let n = 0; const rutas = [];
   for (const f of imgs) {
     E.subiendo = `Subiendo ${n + 1} de ${imgs.length}…`; if (E.sel === c.cid) pintarDiseno();
     try {
@@ -853,12 +943,13 @@ async function subirReferencias(c, grupo, files) {
       const { error } = await sb.from('prod_archivos').insert({ ref: `jay:${c.cid}:${nombre}`, cid: c.cid, tipo: 'referencia', ruta,
         nota: 'Mi referencia', mime: 'image/jpeg', grupo, origen: 'jay' });
       if (error) throw error;
-      n++;
+      n++; rutas.push(ruta);
     } catch (ex) { alert('No se pudo subir una imagen: ' + (ex.message || ex)); }
   }
   E.subiendo = null;
   toast({ titulo: 'Referencias', texto: `${n} subida${n === 1 ? '' : 's'} a ${grupo === 'sobre' ? 'Sobres' : 'Portadas'} de ${c.nombre || 'la clienta'}.` });
-  if (E.sel === c.cid) cargarArchivos(c.cid);
+  if (E.sel === c.cid) await cargarArchivos(c.cid);
+  return rutas;
 }
 
 // ---------- compartir desde la app de Pinterest (share_target del manifest) ----------
