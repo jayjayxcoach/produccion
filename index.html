@@ -686,7 +686,7 @@ const PORTADAS_FOTO = ['P1', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'];
 const enMarcha = (o) => ['nueva', 'tomada', 'avance'].includes(o.estado);
 const grupoDeOrden = (o) => (o.datos && (o.datos.grupo || (o.datos.rehacer && o.datos.rehacer.grupo))) || null;
 function lineaOrden(o) {
-  const txt = { nueva: 'En cola: la Ryzen7 lo toma en segundos', tomada: 'La Ryzen7 lo tomó…' }[o.estado] || o.avance || o.estado;
+  const txt = { nueva: 'En cola: la Ryzen7 lo toma en segundos', tomada: 'En fila en la Ryzen7…' }[o.estado] || o.avance || o.estado;
   const pre = o.tipo === 'pinterest' ? 'Pinterest: ' : o.datos && o.datos.rehacer ? 'Rehacer: ' : '';
   return h('div', { class: 'progreso' + (o.estado === 'lista' ? ' lista' : o.estado === 'error' ? ' error' : ''), style: 'margin-top:6px' }, pre + txt);
 }
