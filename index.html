@@ -117,6 +117,55 @@ h2{margin:0 0 10px;font-size:17px}
 
 nav.abajo{display:none}
 
+/* Mesa de diseño (fase 2) */
+.mesa-elegidos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.elegido{display:flex;flex-direction:column;gap:6px;margin:0}
+.elegido .marco{aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:var(--fondo);border:1px solid var(--linea);display:flex;align-items:center;justify-content:center;color:var(--gris2);font-size:13px;text-align:center;padding:0}
+.elegido .marco img{width:100%;height:100%;object-fit:cover;display:block}
+.elegido figcaption{font-size:13px;color:var(--gris)}
+.elegido figcaption b{color:var(--vino)}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.foto{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--fondo);border:1px solid var(--linea);padding:0}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
+.foto .chip{position:absolute;left:6px;bottom:6px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(34,26,28,.75);color:#fff}
+.muestras{display:flex;flex-wrap:wrap;gap:10px}
+.muestra{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--gris)}
+.muestra i{width:34px;height:34px;border-radius:10px;border:1px solid rgba(0,0,0,.12);display:inline-block}
+.lista-ficha{margin:0;padding:0;list-style:none}
+.lista-ficha li{padding:8px 0;border-bottom:1px solid var(--linea);font-size:14px;display:flex;gap:8px;align-items:flex-start}
+.lista-ficha li:last-child{border-bottom:none}
+.lista-ficha li.falta{color:var(--ambar)}
+.lista-ficha li.falta::before{content:'Falta';flex-shrink:0;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:var(--ambar-claro);color:var(--ambar);margin-top:1px}
+.lista-ficha li.hecho{color:var(--gris2);text-decoration:line-through}
+.caja-check{width:18px;height:18px;flex-shrink:0;border-radius:5px;border:1.5px solid var(--gris2);margin-top:1px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#fff}
+.caja-check.si{background:var(--verde);border-color:var(--verde)}
+.sub-mesa{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gris2);margin:16px 0 8px}
+.versiones a{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--linea);text-decoration:none;color:var(--tinta);font-size:14px}
+.versiones a:last-child{border-bottom:none}
+.versiones img{width:56px;height:56px;border-radius:10px;object-fit:cover;background:var(--fondo)}
+.versiones .ico-doc{width:56px;height:56px;border-radius:10px;background:var(--vino-claro);color:var(--vino);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+
+/* Fotos de verdad en el chat */
+.burbuja .adj{display:block;margin:-3px -6px 6px;border-radius:10px;overflow:hidden;max-width:240px;padding:0;border:none;background:none}
+.burbuja .adj img{display:block;width:100%;height:auto;max-height:320px;object-fit:cover}
+.burbuja audio{display:block;width:230px;max-width:100%;margin-bottom:4px}
+.burbuja .trans{display:block;font-size:12.5px;color:var(--gris);font-style:italic}
+
+/* Instrucción para Vale */
+.vale{border-top:1px solid var(--linea);padding:10px 12px max(10px,env(safe-area-inset-bottom));background:var(--papel);display:flex;flex-direction:column;gap:8px}
+.vale label{font-size:12px}
+.vale textarea{width:100%;min-height:64px;max-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--linea);border-radius:12px;font-size:15px;color:var(--tinta);background:#fff}
+.vale .fila-vale{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.vale .ayuda{font-size:12px;color:var(--gris2)}
+.orden{align-self:flex-end;max-width:86%;font-size:12.5px;background:#FFF7E8;border:1px dashed #E5C78F;color:var(--ambar);border-radius:12px;padding:7px 10px;white-space:pre-wrap}
+.orden.lista{background:#EEF6F0;border-color:#B9D9C3;color:var(--verde)}
+.orden.error{background:#FBEAEA;border-color:#E9B8B8;color:#9B1C1C}
+
+/* Visor de foto */
+#visor{position:fixed;inset:0;z-index:40;background:rgba(20,14,16,.92);display:flex;align-items:center;justify-content:center;padding:16px}
+#visor img,#visor video{max-width:100%;max-height:100%;border-radius:10px}
+#visor button{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:999px;border:none;background:#fff;color:var(--vino);font-size:20px;font-weight:700}
+
 @media (max-width: 900px){
   .cuerpo{display:block;position:relative}
   .panel,#p-lado{position:absolute;inset:0;display:none;border:none!important}
@@ -177,7 +226,14 @@ nav.abajo{display:none}
         <button type="button" id="t-cambios">Cambios <span class="contador oculto" id="n-cambios-t">0</span></button>
       </div>
       <div id="chat"></div>
-      <div class="pie-chat" id="pie-chat">Solo lectura: lo que escribas para Vale llega en la fase 2.</div>
+      <form class="vale oculto" id="pie-chat" autocomplete="off">
+        <label for="t-vale">Instrucción para Vale</label>
+        <textarea id="t-vale" maxlength="1500" placeholder="Ej.: dile que su sobre ya está en diseño y pídele una foto de frente con buena luz"></textarea>
+        <div class="fila-vale">
+          <span class="ayuda">Vale se lo dice a la clienta con sus palabras. Tú no le escribes directo.</span>
+          <button class="btn chico" type="submit" id="b-vale">Mandar a Vale</button>
+        </div>
+      </form>
       <div id="cambios" class="oculto"></div>
     </aside>
   </div>
@@ -189,6 +245,8 @@ nav.abajo{display:none}
     <button type="button" data-ir="cambios">Cambios <span class="contador oculto" id="n-cambios">0</span></button>
   </nav>
 </section>
+
+<div id="visor" class="oculto" role="dialog" aria-label="Archivo"><button type="button" id="b-visor" aria-label="Cerrar">×</button><div id="visor-in"></div></div>
 
 <button id="toast" class="oculto" type="button">
   <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="#C9A36A" aria-hidden="true"><path d="M12 21s-7-4.4-9.3-9C1.2 8.9 3 5 6.6 5c2 0 3.4 1.1 4.4 2.6C12 6.1 13.4 5 15.4 5 19 5 20.8 8.9 19.3 12 17 16.6 12 21 12 21z"></path></svg></span>
@@ -209,7 +267,9 @@ const TOCA_DIAS = 3;
 
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON, { auth: { persistSession: true, autoRefreshToken: true } });
 const $ = (id) => document.getElementById(id);
-const E = { clientas: [], avisos: [], noLeidos: {}, sel: null, mensajes: [], lado: 'chat', verTodos: {}, canal: null };
+const E = { clientas: [], avisos: [], noLeidos: {}, sel: null, mensajes: [], lado: 'chat', verTodos: {}, canal: null,
+  archivos: [], ordenes: [], catalogo: {} };
+const URLS = {};   // ruta del bucket privado → enlace firmado (1 h)
 
 function h(tag, attrs, ...hijos) {
   const el = document.createElement(tag);
@@ -268,12 +328,15 @@ $('f-entrada').addEventListener('submit', async (ev) => {
 // ---------- datos ----------
 async function cargarTodo() {
   const desde = new Date(Date.now() - 45 * 864e5).toISOString();
-  const [c, a] = await Promise.all([
+  const [c, a, k] = await Promise.all([
     sb.from('prod_clientas').select('*').eq('oculta', false).gte('last_message_at', desde).order('last_message_at', { ascending: false }),
-    sb.from('prod_avisos').select('*').order('creado', { ascending: false }).limit(60)
+    sb.from('prod_avisos').select('*').order('creado', { ascending: false }).limit(60),
+    sb.from('prod_archivos').select('ruta,nota').eq('tipo', 'catalogo').limit(200)
   ]);
   E.clientas = c.data || [];
   E.avisos = a.data || [];
+  E.catalogo = {};
+  for (const r of k.data || []) E.catalogo[r.ruta] = r.nota;
   await cargarNoLeidos();
   pintar();
 }
@@ -289,6 +352,53 @@ async function cargarChat(cid) {
   E.mensajes = (data || []).reverse();
   pintarChat(true);
 }
+// ---------- archivos (bucket privado: enlaces firmados de 1 h) ----------
+async function firmar(rutas) {
+  const faltan = [...new Set(rutas.filter((r) => r && !(URLS[r] && URLS[r].exp > Date.now() + 120e3)))];
+  for (let i = 0; i < faltan.length; i += 100) {
+    const { data } = await sb.storage.from('produccion').createSignedUrls(faltan.slice(i, i + 100), 3600);
+    for (const d of data || []) if (d.signedUrl) URLS[d.path] = { u: d.signedUrl, exp: Date.now() + 3600e3 };
+  }
+}
+const enlace = (r) => (r && URLS[r] ? URLS[r].u : null);
+async function cargarArchivos(cid) {
+  const [a, o] = await Promise.all([
+    sb.from('prod_archivos').select('*').eq('cid', cid).order('creado', { ascending: false }).limit(300),
+    sb.from('prod_ordenes').select('*').eq('cid', cid).order('creada', { ascending: false }).limit(30)
+  ]);
+  if (E.sel !== cid) return;
+  E.archivos = a.data || [];
+  E.ordenes = (o.data || []).reverse();
+  const c = E.clientas.find((x) => x.cid === cid);
+  await firmar([...E.archivos.map((x) => x.miniatura || x.ruta), ...E.archivos.filter((x) => x.tipo === 'audio').map((x) => x.ruta),
+    ...elegidos(c).map((x) => x.ruta)]);
+  if (E.sel !== cid) return;
+  pintarDiseno(); pintarChat(false);
+}
+// sobre y portada: la fila que dejó el sincronizador o, si todavía no hay, la imagen del catálogo por su código
+function elegidos(c) {
+  if (!c) return [];
+  const out = [];
+  for (const [tipo, re] of [['sobre', /\bS\d+\b/], ['portada', /\bP\d+\b/]]) {
+    const fila = E.archivos.find((a) => a.tipo === tipo);
+    const cod = (c.eleccion || '').match(re);
+    if (fila) out.push(fila);
+    else if (cod) out.push({ tipo, ruta: `catalogo/${cod[0]}.jpg`, nota: E.catalogo[`catalogo/${cod[0]}.jpg`] || cod[0] });
+  }
+  return out;
+}
+async function ver(a) {
+  if (a.tipo === 'documento' || a.tipo === 'pdf' || /pdf/.test(a.mime || '')) {
+    await firmar([a.ruta]); const u = enlace(a.ruta); if (u) window.open(u, '_blank', 'noopener'); return;
+  }
+  await firmar([a.ruta]);
+  const u = enlace(a.ruta); if (!u) return;
+  const esVideo = /^video\//.test(a.mime || '') || /\.(mp4|mov|3gp)$/i.test(a.ruta);
+  $('visor-in').replaceChildren(esVideo ? h('video', { src: u, controls: true, autoplay: true, playsinline: true }) : h('img', { src: u, alt: a.nota || 'Archivo' }));
+  $('visor').classList.remove('oculto');
+}
+$('b-visor').addEventListener('click', () => { $('visor').classList.add('oculto'); $('visor-in').replaceChildren(); });
+
 async function marcarLeido(cid) {
   delete E.noLeidos[cid];
   await sb.from('prod_lecturas').upsert({ cid, leido_hasta: new Date().toISOString() });
@@ -325,6 +435,17 @@ function escuchar() {
         else { E.noLeidos[m.cid] = (E.noLeidos[m.cid] || 0) + 1; pintarContadores(); pintarLista(); }
       }
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'prod_archivos' }, (p) => {
+      const a = p.new; if (!a) return;
+      if (a.tipo === 'catalogo') E.catalogo[a.ruta] = a.nota;
+      if (E.sel && (a.cid === E.sel || a.tipo === 'catalogo')) cargarArchivos(E.sel);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'prod_ordenes' }, (p) => {
+      const o = p.new; if (!o || o.cid !== E.sel) return;
+      const i = E.ordenes.findIndex((x) => x.id === o.id);
+      if (i >= 0) E.ordenes[i] = o; else E.ordenes.push(o);
+      pintarChat(false);
+    })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'prod_avisos' }, (p) => {
       const a = p.new; if (!a || !a.id) return;
       const i = E.avisos.findIndex((x) => x.id === a.id);
@@ -340,7 +461,7 @@ function escuchar() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && !$('app').classList.contains('oculto')) {
-    cargarTodo(); if (E.sel) cargarChat(E.sel);
+    cargarTodo(); if (E.sel) { cargarChat(E.sel); cargarArchivos(E.sel); }
   }
 });
 
@@ -423,9 +544,87 @@ function pintarDiseno() {
   caja.push(h('div', { class: 'tarjeta' }, h('h2', {}, 'Su proceso'),
     ...filas.map(([k, v]) => h('div', { class: 'fila' }, h('span', { class: 'k' }, k), h('span', {}, v))),
     !c.carpeta ? h('p', { class: 'nota', style: 'margin-top:10px' }, 'Todavía sin ficha: Vale está con ella. Aparece completa cuando dé sus datos y elija.') : null));
-  caja.push(h('div', { class: 'tarjeta' }, h('h2', {}, 'Mesa de diseño'),
-    h('p', { class: 'nota' }, 'Fase 2: aquí van sus fotos, el sobre y la portada que eligió en imagen, y las referencias. Fase 3: los botones que mandan a la Ryzen7 (Pinterest, Gemini, PDF, armar invitación).')));
+  caja.splice(tocas.length ? 2 : 1, 0, mesa(c));
   $('p-diseno').replaceChildren(...caja);
+}
+
+// ---------- mesa de diseño ----------
+const COLORES = [['palo de rosa', '#E3B5B8'], ['rosa palo', '#E3B5B8'], ['rosa pastel', '#F6C6D6'], ['rosa gold', '#D9A68C'], ['oro rosa', '#D9A68C'],
+  ['azul marino', '#1F2F5C'], ['azul rey', '#2340A8'], ['verde esmeralda', '#1F7A55'], ['verde menta', '#A8E0C8'], ['verde olivo', '#6B7A3A'],
+  ['champagne', '#E9D8B4'], ['champán', '#E9D8B4'], ['dorado', '#C9A36A'], ['oro', '#C9A36A'], ['plateado', '#BFC3C8'], ['plata', '#BFC3C8'],
+  ['rosa', '#F2A7C0'], ['lila', '#C8A2D8'], ['lavanda', '#B9A6E0'], ['morado', '#7E4A9E'], ['violeta', '#8A4FBF'], ['púrpura', '#6E2A8C'],
+  ['fucsia', '#D6247D'], ['rojo', '#B3262E'], ['vino', '#6B1A20'], ['burdeos', '#6B1A20'], ['coral', '#F27C6B'], ['salmón', '#F5A48B'],
+  ['durazno', '#F7B993'], ['naranja', '#F08A3E'], ['amarillo', '#F2CD4B'], ['mostaza', '#D4A017'], ['verde', '#4F8A5B'], ['menta', '#A8E0C8'],
+  ['turquesa', '#3BB9B0'], ['celeste', '#8EC5E8'], ['azul', '#4A78B5'], ['blanco', '#FFFFFF'], ['marfil', '#FFF8E7'], ['crema', '#F5EBD7'],
+  ['beige', '#E8D9C0'], ['nude', '#E3C4A8'], ['negro', '#222222'], ['gris', '#9A9A9A'], ['café', '#7A5235'], ['marrón', '#7A5235'], ['terracota', '#C06446']];
+function muestras(texto) {
+  let t = ' ' + (texto || '').toLowerCase() + ' ';
+  const out = [];
+  for (const [nom, hex] of COLORES) {
+    const i = t.indexOf(nom);
+    if (i < 0 || /[a-záéíóúñ]/.test(t[i - 1]) || /[a-záéíóúñ]/.test(t[i + nom.length] || ' ')) continue;
+    out.push([i, nom, hex]); t = t.slice(0, i) + ' '.repeat(nom.length) + t.slice(i + nom.length);
+  }
+  return out.sort((a, b) => a[0] - b[0]);
+}
+const sinMd = (s) => String(s || '').replace(/\*\*|`/g, '');
+const FALTA = /\bfalta|por confirmar|pendiente|todav[ií]a no|no ha (dado|mandado|dicho)|no tiene|\?\s*$/i;
+
+function mesa(c) {
+  const t = h('div', { class: 'tarjeta' }, h('h2', {}, 'Mesa de diseño'));
+  // 1. sobre y portada elegidos, en imagen
+  const el = elegidos(c);
+  const cuadro = (tipo, titulo) => {
+    const a = el.find((x) => x.tipo === tipo);
+    const u = a && enlace(a.miniatura || a.ruta);
+    return h('figure', { class: 'elegido' },
+      h('button', { type: 'button', class: 'marco', onclick: a ? () => ver(a) : null, 'aria-label': titulo },
+        u ? h('img', { src: u, alt: `${titulo}: ${a.nota || ''}`, loading: 'lazy' }) : (a ? 'Cargando imagen…' : 'Todavía no lo eligió')),
+      h('figcaption', {}, h('b', {}, titulo), a ? ' · ' + (a.nota || '') : ''));
+  };
+  t.append(h('div', { class: 'mesa-elegidos' }, cuadro('sobre', 'Sobre'), cuadro('portada', 'Portada')));
+  // 2. colores en muestras
+  if (c.colores) {
+    const ms = muestras(c.colores);
+    t.append(h('div', { class: 'sub-mesa' }, 'Colores'),
+      ms.length ? h('div', { class: 'muestras' }, ...ms.map(([, nom, hex]) => h('span', { class: 'muestra' }, h('i', { style: 'background:' + hex }), nom)))
+        : null,
+      h('p', { class: 'meta', style: 'margin:6px 0 0' }, c.colores));
+  }
+  // 3. sus fotos (y videos)
+  const fotos = E.archivos.filter((a) => a.tipo === 'foto' || a.tipo === 'video' || a.tipo === 'referencia');
+  t.append(h('div', { class: 'sub-mesa' }, `Sus fotos (${fotos.length})`));
+  if (fotos.length) {
+    t.append(h('div', { class: 'fotos' }, ...fotos.slice(0, 24).map((a) => {
+      const u = enlace(a.miniatura || a.ruta);
+      return h('button', { type: 'button', class: 'foto', onclick: () => ver(a), 'aria-label': a.tipo === 'video' ? 'Ver video' : 'Ver foto' },
+        u ? h('img', { src: u, alt: a.nota || 'Foto de la clienta', loading: 'lazy' }) : null,
+        a.tipo === 'video' ? h('span', { class: 'chip' }, 'Video') : a.tipo === 'referencia' ? h('span', { class: 'chip' }, 'Ref') : null);
+    })));
+  } else t.append(h('p', { class: 'meta', style: 'margin:0' }, 'Todavía no mandó fotos.'));
+  // 4. versiones y PDF (subidos desde la Intel o la Ryzen7 con tablero.py subir)
+  const vers = E.archivos.filter((a) => a.tipo === 'version' || a.tipo === 'pdf');
+  if (vers.length) {
+    t.append(h('div', { class: 'sub-mesa' }, 'Versiones y documentos'), h('div', { class: 'versiones' }, ...vers.map((a) => {
+      const u = enlace(a.miniatura || a.ruta), img = /^image\//.test(a.mime || '');
+      return h('a', { href: '#', onclick: (ev) => { ev.preventDefault(); ver(a); } },
+        img && u ? h('img', { src: u, alt: '' }) : h('span', { class: 'ico-doc' }, a.tipo === 'pdf' ? 'PDF' : 'v'),
+        h('span', {}, h('b', {}, a.nota || a.ruta.split('/').pop()), h('br'), h('span', { class: 'meta' }, hora(a.creado))));
+    })));
+  }
+  // 5. datos del evento, con lo que falta marcado
+  const datos = (c.datos || []).map(sinMd);
+  t.append(h('div', { class: 'sub-mesa' }, 'Datos del evento'));
+  if (datos.length) t.append(h('ul', { class: 'lista-ficha' }, ...datos.map((d) => h('li', { class: FALTA.test(d) ? 'falta' : null }, h('span', {}, d)))));
+  else t.append(h('p', { class: 'meta', style: 'margin:0' }, c.carpeta ? 'La ficha no tiene datos todavía.' : 'Sin ficha todavía: Vale está pidiendo los datos.'));
+  // 6. pedidos de la ficha (pendientes primero)
+  const ped = [...(c.pedidos || [])].sort((a, b) => a.hecho - b.hecho);
+  if (ped.length) {
+    t.append(h('div', { class: 'sub-mesa' }, `Pedidos (${ped.filter((p) => !p.hecho).length} pendientes)`),
+      h('ul', { class: 'lista-ficha' }, ...ped.map((p) => h('li', { class: p.hecho ? 'hecho' : null },
+        h('span', { class: 'caja-check' + (p.hecho ? ' si' : ''), 'aria-hidden': 'true' }, p.hecho ? '✓' : ''), h('span', {}, sinMd(p.texto))))));
+  }
+  return t;
 }
 
 function pintarChat(abajo) {
@@ -436,22 +635,68 @@ function pintarChat(abajo) {
   const cs = E.clientas.find((x) => x.cid === E.sel);
   if (cs) box.append(h('div', { class: 'dia', style: 'position:sticky;top:0;font-weight:700;color:var(--vino);z-index:1' }, 'Chat · ' + (cs.nombre || '') + (cs.contacto ? ' (' + cs.contacto + ')' : '')));
   if (!E.mensajes.length) box.append(h('div', { class: 'vacio' }, 'Sin mensajes todavía.'));
+  const porMsg = {};
+  for (const a of E.archivos) if (a.msg_id) porMsg[a.msg_id] = a;
+  // mensajes e instrucciones para Vale, en orden
+  const items = [...E.mensajes.map((m) => ({ t: m.sent_at || '', m })), ...E.ordenes.map((o) => ({ t: o.creada || '', o }))]
+    .sort((a, b) => a.t.localeCompare(b.t));
   let ultDia = '';
-  for (const m of E.mensajes) {
-    const d = m.sent_at ? new Date(m.sent_at).toDateString() : '';
-    if (d && d !== ultDia) { box.append(h('div', { class: 'dia' }, dia(m.sent_at))); ultDia = d; }
+  for (const it of items) {
+    const d = it.t ? new Date(it.t).toDateString() : '';
+    if (d && d !== ultDia) { box.append(h('div', { class: 'dia' }, dia(it.t))); ultDia = d; }
+    if (it.o) { box.append(burbujaOrden(it.o)); continue; }
+    const m = it.m;
     const c = E.clientas.find((x) => x.cid === m.cid);
     const autor = m.direction === 'inbound' ? (c && (c.contacto || c.nombre)) || 'Clienta' : m.autor;
     let cuerpo = m.body || '';
     let media = null;
     const mm = cuerpo.match(/^\[(Foto|Nota de voz|Video|Documento|Sticker|[a-z]+)\]\s?/);
-    if (m.media && mm) { media = h('span', { class: 'media' }, mm[1] + (cuerpo.length > mm[0].length ? ' · ' : '')); cuerpo = cuerpo.slice(mm[0].length); }
+    if (m.media && mm) {
+      cuerpo = cuerpo.slice(mm[0].length);
+      media = adjunto(porMsg[m.id]) || h('span', { class: 'media' }, mm[1] + (cuerpo ? ' · ' : ''));
+    }
     box.append(h('div', { class: 'msg ' + (m.direction === 'inbound' ? 'in' : 'out') },
       h('span', { class: 'quien' }, `${autor} · ${hora(m.sent_at)}`),
       h('div', { class: 'burbuja' }, media, cuerpo)));
   }
+  $('pie-chat').classList.toggle('oculto', !E.sel || E.lado !== 'chat');
   if (abajo || cerca) box.scrollTop = box.scrollHeight;
 }
+function adjunto(a) {
+  if (!a) return null;
+  const mini = enlace(a.miniatura || a.ruta);
+  if (a.tipo === 'foto' && mini) return h('button', { type: 'button', class: 'adj', onclick: () => ver(a), 'aria-label': 'Ver foto' }, h('img', { src: mini, alt: 'Foto que mandó', loading: 'lazy' }));
+  if (a.tipo === 'video' && mini) return h('span', {}, h('button', { type: 'button', class: 'adj', onclick: () => ver(a), 'aria-label': 'Ver video' }, h('img', { src: mini, alt: 'Video (12 cuadros)', loading: 'lazy' })),
+    a.nota ? h('span', { class: 'trans' }, a.nota) : null);
+  if (a.tipo === 'audio' && enlace(a.ruta)) {
+    const dice = (a.nota || '').match(/Dice: «([\s\S]*)»/);
+    return h('span', {}, h('audio', { src: enlace(a.ruta), controls: true, preload: 'none' }), h('span', { class: 'trans' }, dice ? '«' + dice[1] + '»' : (a.nota || '')));
+  }
+  if (a.tipo === 'documento') return h('a', { href: '#', class: 'media', onclick: (ev) => { ev.preventDefault(); ver(a); } }, 'Abrir documento');
+  return null;
+}
+function burbujaOrden(o) {
+  const est = { nueva: 'Enviando a Vale…', tomada: 'Vale lo está recibiendo…', avance: o.avance || 'En camino…', lista: o.avance || 'Vale ya lo tiene', error: o.avance || 'No llegó a Vale' }[o.estado] || o.estado;
+  return h('div', { class: 'orden' + (o.estado === 'lista' ? ' lista' : o.estado === 'error' ? ' error' : '') },
+    h('b', {}, 'Para Vale · ' + hora(o.creada)), '\n', (o.datos && o.datos.texto) || '', '\n— ', est);
+}
+
+$('pie-chat').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const texto = $('t-vale').value.trim();
+  const c = E.clientas.find((x) => x.cid === E.sel);
+  if (!texto || !c) return;
+  if (!confirm(`¿Mandar esta instrucción a Vale para ${c.nombre || 'esta clienta'}?\n\n«${texto}»\n\nVale se lo dice a la clienta con sus palabras.`)) return;
+  $('b-vale').disabled = true;
+  const { data: { user } } = await sb.auth.getUser();
+  const { data, error } = await sb.from('prod_ordenes').insert({ cid: c.cid, tipo: 'aviso_vale', datos: { texto }, user_id: user && user.id }).select().single();
+  $('b-vale').disabled = false;
+  if (error) return alert('No se pudo mandar a Vale: ' + error.message);
+  $('t-vale').value = '';
+  if (!E.ordenes.some((x) => x.id === data.id)) E.ordenes.push(data);
+  pintarChat(true);
+  toast({ titulo: 'Instrucción enviada a Vale', texto: 'Le escribe a ' + (c.nombre || 'la clienta') + ' en unos segundos.' });
+});
 
 function pintarAvisos() {
   const box = $('avisos'); box.replaceChildren(h('h2', { style: 'padding:4px 6px' }, 'Avisos'));
@@ -482,9 +727,9 @@ async function atender(id) {
 }
 
 function elegir(cid, desdeAviso) {
-  E.sel = cid; E.mensajes = [];
+  E.sel = cid; E.mensajes = []; E.archivos = []; E.ordenes = [];
   history.replaceState(null, '', '#c=' + cid);
-  pintarLista(); pintarDiseno(); pintarChat(true); cargarChat(cid);
+  pintarLista(); pintarDiseno(); pintarChat(true); cargarChat(cid); cargarArchivos(cid);
   if (E.noLeidos[cid]) marcarLeido(cid);
   if (innerWidth <= 900) ir(desdeAviso ? 'diseno' : 'diseno');
   pintarContadores();
@@ -502,7 +747,7 @@ document.querySelectorAll('nav.abajo button').forEach((b) => b.addEventListener(
 function verLado(cual) {
   E.lado = cual;
   $('t-chat').classList.toggle('act', cual === 'chat'); $('t-cambios').classList.toggle('act', cual === 'cambios');
-  $('chat').classList.toggle('oculto', cual !== 'chat'); $('pie-chat').classList.toggle('oculto', cual !== 'chat');
+  $('chat').classList.toggle('oculto', cual !== 'chat'); $('pie-chat').classList.toggle('oculto', cual !== 'chat' || !E.sel);
   $('cambios').classList.toggle('oculto', cual !== 'cambios');
   if (cual === 'chat') pintarChat(true);
 }
