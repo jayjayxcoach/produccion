@@ -1,5 +1,5 @@
 // Service worker del tablero de producción: avisos en la barra del teléfono y la app abre aunque no haya red.
-const CACHE = 'produccion-v8';
+const CACHE = 'produccion-v9';
 const BASICOS = ['/', '/index.html', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png', '/icono-barra.png'];
 
 self.addEventListener('install', (e) => {

@@ -654,10 +654,15 @@ async function marcar(a, estado) {
 const TEMAS = ['vaquera', 'charra', 'princesa', 'mariposas', 'floral', 'flores', 'boho', 'rústica', 'tehuana', 'mexicana', 'tropical', 'encantada',
   'bosque', 'parís', 'hollywood', 'sirena', 'girasoles', 'cenicienta', 'rapunzel', 'vintage', 'glam', 'minimalista'];
 function temaDe(c) {
-  const t = [...(c.pedidos || []).map((p) => p.texto), ...(c.datos || [])].join(' \n ').toLowerCase();
-  let mejor = null, pos = -1;
-  for (const k of TEMAS) { const i = t.lastIndexOf(k); if (i > pos) { pos = i; mejor = k; } }
-  return mejor;
+  // primero los pedidos, del más nuevo al más viejo; en cada texto gana el último nombrado. Si no, los datos.
+  const textos = [...(c.pedidos || []).map((p) => p.texto).reverse(), (c.datos || []).join(' \n ')];
+  for (const raw of textos) {
+    const t = String(raw || '').toLowerCase().replace(/\bno (es |son |de )?(de )?\w+/g, ' ');
+    let mejor = null, pos = -1;
+    for (const k of TEMAS) { const i = t.lastIndexOf(k); if (i > pos) { pos = i; mejor = k; } }
+    if (mejor) return mejor;
+  }
+  return null;
 }
 function busquedaDe(c, grupo) {
   return [grupo === 'sobre' ? 'sobre invitación XV' : 'portada invitación XV', temaDe(c), (c.colores || '').replace(/\bcon\b/g, ' ')]
