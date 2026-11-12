@@ -933,7 +933,7 @@ function editorAcople(c, rec, fondo) {
   const W = 1200, H = 1600, cid = c.cid;
   E.acople = E.acople || {};
   if (!E.acople[cid]) { try { E.acople[cid] = JSON.parse(leerLS('acople:' + cid) || 'null'); } catch (_) {} }
-  const st = E.acople[cid] = E.acople[cid] || { cx: 0.5, cy: null, s: 0.85, flip: false, sombra: true };
+  const st = E.acople[cid] = E.acople[cid] || { cx: 0.5, cy: null, s: null, flip: false, sombra: true };
   const guardar = () => ponerLS('acople:' + cid, JSON.stringify(st));
   const cv = h('canvas', { class: 'lienzo', width: W, height: H, 'aria-label': 'Vista previa de la portada: arrastra para mover, pellizca para cambiar el tamaño' });
   const ctx = cv.getContext('2d');
@@ -942,6 +942,7 @@ function editorAcople(c, rec, fondo) {
     ctx.fillStyle = '#eee'; ctx.fillRect(0, 0, W, H);
     if (F) { const k = Math.max(W / F.naturalWidth, H / F.naturalHeight); const fw = F.naturalWidth * k, fh = F.naturalHeight * k; ctx.drawImage(F, (W - fw) / 2, (H - fh) / 2, fw, fh); }
     if (!R) return;
+    if (st.s == null) { st.s = Math.min(0.85, 0.8 * H * R.naturalWidth / (R.naturalHeight * W)); tam.value = st.s; }   // que quepa entera
     const rw = st.s * W, rh = rw * R.naturalHeight / R.naturalWidth;
     const cy = st.cy == null ? H - rh / 2 - H * 0.03 : st.cy * H, cx = st.cx * W;
     if (st.sombra) {
@@ -954,9 +955,6 @@ function editorAcople(c, rec, fondo) {
     ctx.drawImage(R, -rw / 2, -rh / 2, rw, rh); ctx.restore();
   };
   const uf = enlace(fondo.ruta), ur = enlace(rec.ruta);
-  if (uf) imagen(uf, (im) => { F = im; dibujar(); });
-  if (ur) imagen(ur, (im) => { R = im; dibujar(); });
-  if (!uf || !ur) firmar([fondo.ruta, rec.ruta]).then(() => pintarDiseno());
   // arrastrar con un dedo, pellizcar con dos
   const dedos = new Map(); let dist0 = 0, s0 = st.s;
   const fijarCy = () => { if (st.cy == null && R) { const rh = st.s * W * R.naturalHeight / R.naturalWidth; st.cy = (H - rh / 2 - H * 0.03) / H; } };
@@ -972,8 +970,11 @@ function editorAcople(c, rec, fondo) {
   });
   const soltar = (e) => { dedos.delete(e.pointerId); if (dedos.size < 2) dist0 = 0; guardar(); };
   cv.addEventListener('pointerup', soltar); cv.addEventListener('pointercancel', soltar);
-  const tam = h('input', { type: 'range', min: '0.15', max: '2', step: '0.01', value: String(st.s), 'aria-label': 'Tamaño de ella',
+  const tam = h('input', { type: 'range', min: '0.15', max: '2', step: '0.01', value: String(st.s || 0.6), 'aria-label': 'Tamaño de ella',
     oninput: (e) => { fijarCy(); st.s = +e.target.value; dibujar(); }, onchange: guardar });
+  if (uf) imagen(uf, (im) => { F = im; dibujar(); });
+  if (ur) imagen(ur, (im) => { R = im; dibujar(); });
+  if (!uf || !ur) firmar([fondo.ruta, rec.ruta]).then(() => pintarDiseno());
   const nota = h('textarea', { 'data-k': 'integrar-' + cid, rows: 2, placeholder: 'Para «Integrar con IA» (opcional). Ej.: luz de atardecer desde la izquierda' });
   const guardarPortada = async (integrar, boton) => {
     if (!F || !R) return;
@@ -997,7 +998,7 @@ function editorAcople(c, rec, fondo) {
     h('div', { class: 'acc-dis', style: 'align-items:center' }, h('span', { class: 'meta' }, 'Tamaño'), tam),
     h('div', { class: 'acc-dis' },
       h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.flip = !st.flip; dibujar(); guardar(); } }, 'Voltear'),
-      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.cx = 0.5; st.cy = null; st.s = 0.85; tam.value = st.s; dibujar(); guardar(); } }, 'Centrar'),
+      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.cx = 0.5; st.cy = null; st.s = null; dibujar(); guardar(); } }, 'Centrar'),
       h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.sombra = !st.sombra; dibujar(); guardar(); } }, 'Sombra en el piso')),
     nota,
     h('div', { class: 'acc-dis' },
