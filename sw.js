@@ -1,5 +1,5 @@
 // Service worker del tablero de producción: avisos en la barra del teléfono y la app abre aunque no haya red.
-const CACHE = 'produccion-v2';
+const CACHE = 'produccion-v3';
 const BASICOS = ['/', '/index.html', '/manifest.webmanifest', '/icono-192.png', '/icono-512.png', '/icono-barra.png'];
 
 self.addEventListener('install', (e) => {
@@ -23,6 +23,16 @@ self.addEventListener('fetch', (e) => {
     }).catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
   );
 });
+
+// Diagnóstico: anota en el tablero qué pasó con cada aviso (sin datos de clientas).
+const SUPA = 'https://anoyfobghrmicpqsdkma.supabase.co';
+const LLAVE = 'sb_publishable_e4Q--M4Csqn7OEYd8iOu1Q_yj9mdEJL';
+function eco(evento, detalle) {
+  return fetch(SUPA + '/rest/v1/rpc/prod_eco_anotar', {
+    method: 'POST', headers: { apikey: LLAVE, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evento, detalle: (CACHE + ' ' + (detalle || '')).slice(0, 300) })
+  }).catch(() => {});
+}
 
 function leer(e) {
   if (!e.data) return {};
@@ -48,9 +58,13 @@ function mostrar(d) {
 // Push: solo llegan los "te toca". Primero SIEMPRE la notificación en la barra; el número en el ícono va aparte.
 self.addEventListener('push', (e) => {
   const d = leer(e);
-  e.waitUntil(mostrar(d).then(() => {
-    try { if (self.navigator && self.navigator.setAppBadge) return self.navigator.setAppBadge().catch(() => {}); } catch (_) {}
-  }));
+  e.waitUntil(mostrar(d)
+    .then(() => self.registration.getNotifications())
+    .then((ns) => eco('push-mostrado', 'permiso=' + (self.Notification ? Notification.permission : '?') + ' en_barra=' + ns.length))
+    .catch((err) => eco('push-error', String(err && err.message || err)))
+    .then(() => {
+      try { if (self.navigator && self.navigator.setAppBadge) return self.navigator.setAppBadge().catch(() => {}); } catch (_) {}
+    }));
 });
 
 // La app puede pedir una notificación de prueba local (botón "Probar aviso").
