@@ -9,6 +9,12 @@
   "orientation": "portrait",
   "background_color": "#F6F2EE",
   "theme_color": "#6B1A20",
+  "share_target": {
+    "action": "/compartir",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": { "title": "title", "text": "text", "url": "url", "files": [{ "name": "imagenes", "accept": ["image/*"] }] }
+  },
   "icons": [
     { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png" },

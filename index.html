@@ -202,6 +202,19 @@ nav.abajo{display:none}
 .ref.si{border-color:var(--vino)}
 .ref .tilde{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:var(--vino);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
 .franja{margin-top:16px;padding-top:12px;border-top:1px solid var(--linea);display:flex;flex-direction:column;gap:8px}
+.subir-ref{width:100%;min-height:52px;font-size:15px}
+.ref .toca{position:absolute;inset:0;border:none;padding:0;background:none;width:100%;height:100%}
+.ref .toca img{width:100%;height:100%;object-fit:cover;display:block}
+.ref .quita{position:absolute;top:4px;left:4px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--vino);font-size:18px;font-weight:700;line-height:1;z-index:1}
+.auto-pin{margin-top:16px;padding-top:10px;border-top:1px solid var(--linea)}
+.auto-pin summary{font-size:13px;font-weight:700;color:var(--gris);cursor:pointer;min-height:36px;display:flex;align-items:center}
+.de-ref{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--vino);font-weight:600}
+.de-ref img{width:30px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--linea)}
+.compartir{background:#fff;border-radius:16px;padding:18px;width:min(420px,100%);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.compartir h2{margin:0;color:var(--vino)}
+.compartir select{min-height:44px;border:1px solid var(--linea);border-radius:10px;padding:0 10px;font-size:16px;background:#fff}
+.compartir .acc{display:flex;gap:8px;margin-top:6px}.compartir .acc .btn{flex:1}
+.compartir .refs img{width:100%;height:100%;object-fit:cover}
 .progreso{font-size:13px;padding:10px 12px;border-radius:12px;background:#FFF7E8;color:var(--ambar);border:1px dashed #E5C78F}
 .progreso.lista{background:#EEF6F0;color:var(--verde);border-color:#B9D9C3}
 .progreso.error{background:#FBEAEA;color:#9B1C1C;border-color:#E9B8B8}
@@ -209,7 +222,7 @@ nav.abajo{display:none}
 /* Visor de foto */
 #visor{position:fixed;inset:0;z-index:40;background:rgba(20,14,16,.92);display:flex;align-items:center;justify-content:center;padding:16px}
 #visor img,#visor video{max-width:100%;max-height:100%;border-radius:10px}
-#visor button{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:999px;border:none;background:#fff;color:var(--vino);font-size:20px;font-weight:700}
+#visor #b-visor{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:999px;border:none;background:#fff;color:var(--vino);font-size:20px;font-weight:700}
 
 @media (max-width: 900px){
   .cuerpo{display:block;position:relative}
@@ -388,6 +401,7 @@ async function cargarTodo() {
   for (const r of k.data || []) E.catalogo[r.ruta] = r.nota;
   await cargarNoLeidos();
   pintar();
+  revisarCompartido().catch((e) => console.warn('compartido', e));
 }
 async function cargarNoLeidos() {
   const { data } = await sb.rpc('prod_no_leidos');
@@ -690,7 +704,6 @@ function variaciones(c) {
   const cod = codigoDe(c, g);
   if (!cod) { t.append(h('p', { class: 'meta' }, `Todavía no eligió ${g} (o anótalo en su ficha como S#/P#).`)); return t; }
   const ords = E.ordenes.filter((o) => (o.tipo === 'gemini' || o.tipo === 'pinterest') && grupoDeOrden(o) === g);
-  const pin = ords.filter((o) => o.tipo === 'pinterest'), gem = ords.filter((o) => o.tipo === 'gemini');
   // 1. base
   const base = elegidos(c).find((x) => x.tipo === g), ub = base && enlace(base.miniatura || base.ruta);
   const ms = muestras(c.colores), tema = temaDe(c);
@@ -700,53 +713,84 @@ function variaciones(c) {
       h('div', {}, h('b', {}, base ? base.nota || cod : cod),
         ms.length ? h('div', { class: 'muestras', style: 'margin-top:6px' }, ...ms.map(([, nom, hex]) => h('span', { class: 'muestra' }, h('i', { style: 'background:' + hex }), nom))) : null,
         h('div', { class: 'meta', style: 'margin-top:4px' }, (c.colores || 'Sin colores en la ficha') + (tema ? ' · temática ' + tema : '')))));
-  // 2. referencias de Pinterest
+  // 2. MIS referencias (las que sube Jay o comparte desde Pinterest); la búsqueda automática va plegada abajo
+  const visibles = E.archivos.filter((a) => a.tipo === 'referencia' && a.grupo === g && a.estado !== 'descartada');
+  const mias = visibles.filter((a) => a.origen === 'jay'), auto = visibles.filter((a) => a.origen !== 'jay');
+  const marcadas = visibles.filter((a) => a.estado === 'marcada');
+  const pin = ords.filter((o) => o.tipo === 'pinterest'), gem = ords.filter((o) => o.tipo === 'gemini');
+  const pinVivo = pin.find(enMarcha);
+  const archivo = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'oculto', onchange: async (ev) => {
+    const fs = [...ev.target.files]; ev.target.value = '';
+    if (fs.length) await subirReferencias(c, g, fs);
+  } });
+  const enlacePin = h('input', { type: 'url', placeholder: 'o pega el enlace de un pin', 'aria-label': 'Enlace de un pin de Pinterest' });
+  const cuadro = (a) => {
+    const u = enlace(a.miniatura || a.ruta), si = a.estado === 'marcada';
+    return h('div', { class: 'ref' + (si ? ' si' : '') },
+      h('button', { type: 'button', class: 'toca', 'aria-pressed': String(si), 'aria-label': (si ? 'Desmarcar: ' : 'Marcar: ') + (a.nota || 'referencia'),
+        onclick: () => { if (!si && marcadas.length >= 4) return toast({ titulo: 'Máximo 4', texto: 'Desmarca una para marcar otra.' }); marcar(a, 'marcada'); } },
+        u ? h('img', { src: u, alt: '', loading: 'lazy' }) : null, si ? h('span', { class: 'tilde' }, '✓') : null),
+      h('button', { type: 'button', class: 'quita', 'aria-label': 'Quitar esta referencia', onclick: () => marcar(a, 'descartada') }, '×'));
+  };
+  t.append(h('div', { class: 'paso-t' }, h('b', {}, '2'), `Mis referencias · marca hasta 3 (${marcadas.length} marcadas)`),
+    h('button', { type: 'button', class: 'btn subir-ref', onclick: () => archivo.click() }, '+ Subir referencias (galería o capturas)'), archivo,
+    h('div', { class: 'busca-t', style: 'margin-top:6px' }, enlacePin,
+      h('button', { class: 'btn chico sec', type: 'button', onclick: async (ev) => {
+        const u = enlacePin.value.trim(); if (!/^https:\/\/([a-z]+\.)?(pinterest\.[a-z.]+|pin\.it)\//i.test(u)) return alert('Pega un enlace de Pinterest (pinterest.com o pin.it).');
+        ev.target.disabled = true; if (!(await pedirOrden(c, 'pinterest', { grupo: g, url: u }))) ev.target.disabled = false;
+      } }, 'Traer pin')));
+  if (E.subiendo) t.append(h('div', { class: 'progreso' }, E.subiendo));
+  if (mias.length) t.append(h('div', { class: 'refs' }, ...mias.map(cuadro)));
+  else t.append(h('p', { class: 'meta', style: 'margin:8px 0 0' }, 'Sube 2 o 3 diseños que te gusten (capturas de Pinterest o de tu galería). También puedes compartir un pin desde la app de Pinterest → «Producción».'));
+  // 3. generar: uno «así» por cada referencia marcada
+  const fotos = E.archivos.filter((a) => a.tipo === 'foto');
+  const conFoto = g === 'portada' && PORTADAS_FOTO.includes(cod) && fotos.length;
+  if (conFoto && !E.fotoGen) E.fotoGen = fotos[0].ruta;
+  const nota = h('textarea', { placeholder: 'Indicaciones (opcional). Ej.: sombrero vaquero rosa, herraduras plateadas, sin dorado' });
+  const enCola = gem.filter(enMarcha).length;
+  const hechas = vars.filter((a) => (a.grupo || 'portada') === g).length;
+  const comun = () => ({ modo: 'uno', grupo: g, foto: conFoto ? E.fotoGen : null, instruccion: nota.value.trim() });
+  t.append(h('div', { class: 'paso-t' }, h('b', {}, '3'), 'Crear diseños'),
+    h('div', { class: 'gen' },
+      conFoto ? h('div', {}, h('div', { class: 'meta' }, 'Su foto para la portada'),
+        h('div', { class: 'elige-foto' }, ...fotos.slice(0, 12).map((a) => h('button', { type: 'button', class: E.fotoGen === a.ruta ? 'si' : null,
+          'aria-label': 'Usar esta foto', onclick: () => { E.fotoGen = a.ruta; pintarDiseno(); } }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null)))) : null,
+      nota,
+      h('button', { class: 'btn', type: 'button', disabled: marcadas.length ? null : true, onclick: async (ev) => {
+        ev.target.disabled = true;
+        const usar = marcadas.slice(0, 3);
+        for (let i = 0; i < usar.length; i++) {
+          if (!(await pedirGemini(c, { ...comun(), asi: true, numero: hechas + enCola + i + 1, refs: [usar[i].ruta] }))) { ev.target.disabled = false; return; }
+        }
+      } }, marcadas.length ? `Crear uno así por cada una (${Math.min(marcadas.length, 3)})` + (enCola ? ` · ${enCola} en cola` : '') : 'Marca 1 a 3 referencias para crear'),
+      marcadas.length > 1 ? h('button', { class: 'btn sec', type: 'button', onclick: async (ev) => {
+        ev.target.disabled = true;
+        if (!(await pedirGemini(c, { ...comun(), numero: hechas + enCola + 1, refs: marcadas.map((a) => a.ruta) }))) ev.target.disabled = false;
+      } }, `Generar 1 mezclando las ${marcadas.length} (${cod})`) : null));
+  for (const o of gem.slice(-3)) t.append(lineaOrden(o));
+  const lista = vars.filter((a) => (a.grupo || 'portada') === g).sort((a, b) => (a.estado === 'descartada') - (b.estado === 'descartada'));
+  if (lista.length) t.append(h('div', { class: 'varias', style: 'margin-top:10px' }, ...lista.map((a) => tarjetaVar(c, a))));
+  else t.append(h('p', { class: 'meta', style: 'margin:8px 0 0' }, 'Aquí aparece cada diseño con Aprobar, Rehacer o Descartar.'));
+  // búsqueda automática en Pinterest (opcional, plegada)
   E.q = E.q || {};
   const clave = c.cid + g;
   if (E.q[clave] == null) E.q[clave] = busquedaDe(c, g);
-  const refs = E.archivos.filter((a) => a.tipo === 'referencia' && a.grupo === g).sort((a, b) => (b.estado === 'marcada') - (a.estado === 'marcada'));
-  const marcadas = refs.filter((a) => a.estado === 'marcada');
   const q = h('input', { type: 'search', value: E.q[clave], 'aria-label': 'Palabras para buscar en Pinterest', oninput: (ev) => { E.q[clave] = ev.target.value; } });
-  const pinVivo = pin.find(enMarcha);
   const buscar = async (ev, mas) => {
     const texto = q.value.trim(); if (!texto) return q.focus();
     ev.target.disabled = true;
     const ya = mas ? pin.filter((o) => o.datos && o.datos.q === texto && o.estado === 'lista').reduce((s, o) => s + (o.datos.cantidad || 12), 0) : 0;
     if (!(await pedirOrden(c, 'pinterest', { grupo: g, q: texto, cantidad: mas ? 10 : 16, saltar: ya }))) ev.target.disabled = false;
   };
-  t.append(h('div', { class: 'paso-t' }, h('b', {}, '2'), `Referencias de Pinterest · marca 2 a 4 (${marcadas.length} marcadas)`),
-    h('div', { class: 'busca-t' }, q,
+  E.plegado = E.plegado || {};
+  const det = h('details', { class: 'auto-pin', open: E.plegado[clave] || null, ontoggle: (ev) => { E.plegado[clave] = ev.target.open; } },
+    h('summary', {}, `Buscar en Pinterest (opcional)${auto.length ? ' · ' + auto.length : ''}`),
+    h('div', { class: 'busca-t', style: 'margin-top:8px' }, q,
       h('button', { class: 'btn chico', type: 'button', disabled: pinVivo ? true : null, onclick: (ev) => buscar(ev, false) }, 'Buscar'),
-      refs.length ? h('button', { class: 'btn chico sec', type: 'button', disabled: pinVivo ? true : null, onclick: (ev) => buscar(ev, true) }, '10 más') : null));
+      auto.length ? h('button', { class: 'btn chico sec', type: 'button', disabled: pinVivo ? true : null, onclick: (ev) => buscar(ev, true) }, '10 más') : null),
+    auto.length ? h('div', { class: 'refs' }, ...auto.slice(0, 60).map(cuadro)) : null);
+  t.append(det);
   if (pin.length) t.append(lineaOrden(pin[pin.length - 1]));
-  if (refs.length) t.append(h('div', { class: 'refs' }, ...refs.slice(0, 60).map((a) => {
-    const u = enlace(a.miniatura || a.ruta), si = a.estado === 'marcada';
-    return h('button', { type: 'button', class: 'ref' + (si ? ' si' : ''), 'aria-pressed': String(si), 'aria-label': (si ? 'Desmarcar: ' : 'Marcar: ') + (a.nota || 'referencia'),
-      onclick: () => { if (!si && marcadas.length >= 4) return toast({ titulo: 'Máximo 4', texto: 'Desmarca una para marcar otra.' }); marcar(a, 'marcada'); } },
-      u ? h('img', { src: u, alt: '', loading: 'lazy' }) : null, si ? h('span', { class: 'tilde' }, '✓') : null);
-  })));
-  // 3. generar de a una
-  const fotos = E.archivos.filter((a) => a.tipo === 'foto');
-  const conFoto = g === 'portada' && PORTADAS_FOTO.includes(cod) && fotos.length;
-  if (conFoto && !E.fotoGen) E.fotoGen = fotos[0].ruta;
-  const nota = h('textarea', { placeholder: 'Indicaciones (opcional). Ej.: sombrero vaquero rosa, herraduras plateadas, sin dorado' });
-  const enCola = gem.filter(enMarcha).length;
-  const n = vars.filter((a) => (a.grupo || 'portada') === g).length + enCola + 1;
-  t.append(h('div', { class: 'paso-t' }, h('b', {}, '3'), 'Variaciones de a una'),
-    h('div', { class: 'gen' },
-      conFoto ? h('div', {}, h('div', { class: 'meta' }, 'Su foto para la portada'),
-        h('div', { class: 'elige-foto' }, ...fotos.slice(0, 12).map((a) => h('button', { type: 'button', class: E.fotoGen === a.ruta ? 'si' : null,
-          'aria-label': 'Usar esta foto', onclick: () => { E.fotoGen = a.ruta; pintarDiseno(); } }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null)))) : null,
-      nota,
-      h('button', { class: 'btn', type: 'button', onclick: async (ev) => {
-        ev.target.disabled = true;
-        const ok = await pedirGemini(c, { modo: 'uno', grupo: g, numero: n, refs: marcadas.map((a) => a.ruta), foto: conFoto ? E.fotoGen : null, instruccion: nota.value.trim() });
-        if (!ok) ev.target.disabled = false;
-      } }, `Generar 1 ${g} (${cod}${marcadas.length ? ' + ' + marcadas.length + ' ref.' : ''})` + (enCola ? ` · ${enCola} en cola` : ''))));
-  for (const o of gem.slice(-2)) t.append(lineaOrden(o));
-  const lista = vars.filter((a) => (a.grupo || 'portada') === g).sort((a, b) => (a.estado === 'descartada') - (b.estado === 'descartada'));
-  if (lista.length) t.append(h('div', { class: 'varias', style: 'margin-top:10px' }, ...lista.map((a) => tarjetaVar(c, a))));
-  else t.append(h('p', { class: 'meta', style: 'margin:8px 0 0' }, 'Aquí aparece cada imagen con Aprobar, Rehacer o Descartar.'));
   // franja: lo aprobado para el PDF
   const as = aprob('sobre'), ap = aprob('portada');
   t.append(h('div', { class: 'franja' }, h('div', { class: 'meta' }, h('b', {}, 'Elegidas para el PDF'), ` · sobres ${as.length} / portadas ${ap.length}`),
@@ -756,7 +800,9 @@ function variaciones(c) {
 }
 function tarjetaVar(c, a) {
   const u = enlace(a.miniatura || a.ruta);
-  const pie = h('div', { class: 'pie' }, a.estado === 'aprobada' ? h('span', { class: 'sello' }, 'Aprobada') : null, h('span', {}, a.nota || ''));
+  const ur = a.de_ref && enlace(a.de_ref);
+  const pie = h('div', { class: 'pie' }, a.estado === 'aprobada' ? h('span', { class: 'sello' }, 'Aprobada') : null,
+    ur ? h('span', { class: 'de-ref' }, h('img', { src: ur, alt: 'Referencia' }), 'Así, de tu referencia') : null, h('span', {}, a.nota || ''));
   if (E.rehacer === a.id) {
     const caja = h('textarea', { placeholder: '¿Qué cambio? Con tus palabras' });
     pie.append(h('div', { class: 'rehacer' }, caja,
@@ -775,6 +821,87 @@ function tarjetaVar(c, a) {
   }
   return h('div', { class: 'var' + (a.estado ? ' ' + a.estado : '') },
     h('button', { type: 'button', class: 'img', onclick: () => ver(a), 'aria-label': 'Ver grande' }, u ? h('img', { src: u, alt: a.nota || 'Variación', loading: 'lazy' }) : null), pie);
+}
+
+// ---------- referencias de Jay: se achican en el teléfono (máx. 1600 px) y suben al bucket privado ----------
+function achicar(file, max = 1600) {
+  return new Promise((ok, mal) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(u);
+      cv.toBlob((b) => (b ? ok(b) : mal(new Error('no se pudo leer la imagen'))), 'image/jpeg', 0.88);
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); mal(new Error('no es una imagen')); };
+    img.src = u;
+  });
+}
+async function subirReferencias(c, grupo, files) {
+  const imgs = [...files].filter((f) => /^image\//.test(f.type)).slice(0, 12);
+  if (!imgs.length) return alert('Elige imágenes (JPG, PNG o capturas).');
+  let n = 0;
+  for (const f of imgs) {
+    E.subiendo = `Subiendo ${n + 1} de ${imgs.length}…`; if (E.sel === c.cid) pintarDiseno();
+    try {
+      const b = await achicar(f);
+      const nombre = `ref-jay-${Date.now()}-${n}.jpg`, ruta = `c/${c.cid}/${nombre}`;
+      const up = await sb.storage.from('produccion').upload(ruta, b, { contentType: 'image/jpeg', upsert: false });
+      if (up.error) throw up.error;
+      const { error } = await sb.from('prod_archivos').insert({ ref: `jay:${c.cid}:${nombre}`, cid: c.cid, tipo: 'referencia', ruta,
+        nota: 'Mi referencia', mime: 'image/jpeg', grupo, origen: 'jay' });
+      if (error) throw error;
+      n++;
+    } catch (ex) { alert('No se pudo subir una imagen: ' + (ex.message || ex)); }
+  }
+  E.subiendo = null;
+  toast({ titulo: 'Referencias', texto: `${n} subida${n === 1 ? '' : 's'} a ${grupo === 'sobre' ? 'Sobres' : 'Portadas'} de ${c.nombre || 'la clienta'}.` });
+  if (E.sel === c.cid) cargarArchivos(c.cid);
+}
+
+// ---------- compartir desde la app de Pinterest (share_target del manifest) ----------
+async function revisarCompartido() {
+  if (!/[?&]compartir=1/.test(location.search) || !('caches' in window)) return;
+  history.replaceState(null, '', location.pathname + location.hash);
+  const cache = await caches.open('compartido');
+  const meta = await cache.match('/compartido/meta').then((r) => (r ? r.json() : null)).catch(() => null);
+  if (!meta) return;
+  const files = [];
+  for (let i = 0; i < (meta.n || 0); i++) {
+    const r = await cache.match('/compartido/' + i);
+    if (r) files.push(new File([await r.blob()], meta.nombres[i] || 'imagen.jpg', { type: r.headers.get('Content-Type') || 'image/jpeg' }));
+  }
+  const texto = [meta.title, meta.text, meta.url].filter(Boolean).join(' ');
+  const pinUrl = (texto.match(/https:\/\/([a-z]+\.)?(pinterest\.[a-z.]+|pin\.it)\/\S+/i) || [])[0];
+  const limpiar = () => caches.delete('compartido');
+  if (!files.length && !pinUrl) { limpiar(); return alert('Lo que compartiste no trae imagen ni enlace de Pinterest.'); }
+  const sel = h('select', { 'aria-label': 'Clienta' }, ...E.clientas.map((x) => h('option', { value: x.cid, selected: x.cid === E.sel || null },
+    (x.nombre || 'Sin nombre') + (x.eleccion ? ' · ' + x.eleccion : ''))));
+  let grupo = 'sobre';
+  const bs = ['sobre', 'portada'].map((gr) => h('button', { type: 'button', class: 'btn ' + (gr === grupo ? '' : 'sec'), onclick: () => {
+    grupo = gr; bs.forEach((b, i) => b.classList.toggle('sec', ['sobre', 'portada'][i] !== gr));
+  } }, gr === 'sobre' ? 'Sobre' : 'Portada'));
+  const caja = h('div', { class: 'compartir' },
+    h('h2', {}, 'Guardar referencia'),
+    h('p', { class: 'meta' }, files.length ? `${files.length} imagen${files.length > 1 ? 'es' : ''} de Pinterest` : 'Un pin de Pinterest (la Ryzen7 baja la imagen)'),
+    files.length ? h('div', { class: 'refs' }, ...files.slice(0, 6).map((f) => h('div', { class: 'ref' }, h('img', { src: URL.createObjectURL(f), alt: '' })))) : null,
+    h('label', { class: 'meta' }, '¿Para qué clienta?'), sel,
+    h('label', { class: 'meta' }, '¿Es de sobre o de portada?'), h('div', { class: 'tandas' }, ...bs),
+    h('div', { class: 'acc' },
+      h('button', { type: 'button', class: 'btn', onclick: async (ev) => {
+        const c = E.clientas.find((x) => x.cid === sel.value); if (!c) return;
+        ev.target.disabled = true;
+        elegir(c.cid); E.tanda = grupo; ir('diseno');
+        $('visor').classList.add('oculto'); $('visor-in').replaceChildren();
+        if (files.length) await subirReferencias(c, grupo, files);
+        else await pedirOrden(c, 'pinterest', { grupo, url: pinUrl });
+        limpiar();
+      } }, 'Guardar'),
+      h('button', { type: 'button', class: 'btn sec', onclick: () => { limpiar(); $('visor').classList.add('oculto'); $('visor-in').replaceChildren(); } }, 'Cancelar')));
+  $('visor-in').replaceChildren(caja);
+  $('visor').classList.remove('oculto');
 }
 
 // ---------- mesa de diseño ----------
