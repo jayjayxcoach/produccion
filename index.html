@@ -958,7 +958,7 @@ function editorAcople(c, rec, fondo) {
   // arrastrar con un dedo, pellizcar con dos
   const dedos = new Map(); let dist0 = 0, s0 = st.s;
   const fijarCy = () => { if (st.cy == null && R) { const rh = st.s * W * R.naturalHeight / R.naturalWidth; st.cy = (H - rh / 2 - H * 0.03) / H; } };
-  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); dedos.set(e.pointerId, [e.clientX, e.clientY]); fijarCy();
+  cv.addEventListener('pointerdown', (e) => { try { cv.setPointerCapture(e.pointerId); } catch (_) {} dedos.set(e.pointerId, [e.clientX, e.clientY]); fijarCy();
     if (dedos.size === 2) { const [a, b] = [...dedos.values()]; dist0 = Math.hypot(a[0] - b[0], a[1] - b[1]); s0 = st.s; } });
   cv.addEventListener('pointermove', (e) => {
     if (!dedos.has(e.pointerId)) return;
