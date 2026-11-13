@@ -816,7 +816,7 @@ function variaciones(c) {
 function franjaPDF(vars) {
   const aprob = (gr) => vars.filter((a) => (a.grupo || 'portada') === gr && a.estado === 'aprobada');
   const as = aprob('sobre'), ap = aprob('portada');
-  return (h('div', { class: 'franja' }, h('div', { class: 'meta' }, h('b', {}, 'Elegidas para el PDF'), ` · sobres ${as.length} / portadas ${ap.length}`),
+  return (h('div', { class: 'franja' }, h('div', { class: 'meta' }, h('b', {}, 'Para mandar a la clienta'), ` · sobres ${as.length} / portadas ${ap.length} · sin límite`),
     as.length + ap.length ? h('div', { class: 'elige-foto' }, ...[...as, ...ap].map((a) => h('button', { type: 'button', onclick: () => ver(a), 'aria-label': a.nota || 'Aprobada' },
       enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null))) : null));
 }
