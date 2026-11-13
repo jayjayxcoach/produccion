@@ -10,7 +10,7 @@
 <link rel="icon" href="/icono-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&family=Cinzel:wght@500&display=swap" rel="stylesheet">
 <style>
 :root{--fondo:#F6F2EE;--papel:#FFFFFF;--linea:#E7DFD8;--vino:#6B1A20;--vino-claro:#F4E6E7;--oro:#C9A36A;--tinta:#221A1C;--gris:#4A3F42;--gris2:#6B5E61;--verde:#2F7D4F;--ambar:#7A3F08;--ambar-claro:#FBEFD9}
 *{box-sizing:border-box}
@@ -247,6 +247,11 @@ nav.abajo{display:none}
 .cuantas{display:flex;align-items:center;gap:6px}
 .cuantas button{min-width:40px;min-height:34px;border-radius:999px;border:1px solid var(--linea);background:var(--fondo);font-weight:700;color:var(--gris)}
 .cuantas button.si{background:var(--vino);border-color:var(--vino);color:#fff}
+.capas{display:flex;gap:6px;flex-wrap:wrap}
+.capas button{min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--linea);background:var(--fondo);font-weight:700;color:var(--gris)}
+.capas button.si{background:var(--vino);border-color:var(--vino);color:#fff}
+.capas button.apagada{opacity:.5;text-decoration:line-through}
+.tarjeta input[type=text]{width:100%;min-height:40px;padding:0 10px;border:1px solid var(--linea);border-radius:10px;font-size:16px}
 .progreso{font-size:13px;padding:10px 12px;border-radius:12px;background:#FFF7E8;color:var(--ambar);border:1px dashed #E5C78F}
 .progreso.lista{background:#EEF6F0;color:var(--verde);border-color:#B9D9C3}
 .progreso.error{background:#FBEAEA;color:#9B1C1C;border-color:#E9B8B8}
@@ -909,7 +914,12 @@ function tallerFoto(c, vars, pinVivo) {
         h('span', { class: 'meta' }, recUsar.nota || 'Recorte'),
         h('button', { type: 'button', class: 'btn chico' + (recUsar.estado === 'aprobada' ? '' : ' sec'), onclick: () => elegirUna(recUsar, recs) }, recUsar.estado === 'aprobada' ? '✓ Bien' : 'Bien, usar este'),
         ...[['Recorta más los bordes', { px: 5 }], ['Quita el halo', { px: 6 }], ['Incluye el caballo completo', { todo: true }], ['Solo ella', { modelo: 'humano' }]].map(([txt, extra]) =>
-          h('button', { type: 'button', class: 'btn chico sec', disabled: vivoRec || !foto ? true : null, onclick: (ev) => { ev.target.disabled = true; pedirRec({ ...extra, foto: recUsar.de_ref || foto }); } }, txt)))));
+          h('button', { type: 'button', class: 'btn chico sec', disabled: vivoRec || !foto ? true : null, onclick: (ev) => { ev.target.disabled = true; pedirRec({ ...extra, foto: recUsar.de_ref || foto }); } }, txt)),
+        h('div', { class: 'meta', style: 'margin-top:4px' }, 'Color (colorimetría):'),
+        h('div', { class: 'cuantas', style: 'flex-wrap:wrap' }, ...[['natural', 'Natural'], ['vivo', 'Vivo'], ['calido', 'Cálido'], ['ninguno', 'Sin color']].map(([k, nom]) =>
+          h('button', { type: 'button', class: new RegExp('· ' + ({ natural: 'color natural', vivo: 'color vivo', calido: 'color cálido', ninguno: 'sin color' })[k] + '$').test(recUsar.nota || '') ? 'si' : null,
+            disabled: vivoRec ? true : null, onclick: (ev) => { ev.target.disabled = true;
+              pedirRec(k === 'ninguno' ? { color: k, foto: recUsar.de_ref || foto } : { color: k, desde: recUsar.ruta, nota_base: recUsar.nota, foto: recUsar.de_ref || foto }); } }, nom))))));
     if (recs.length > 1) out.push(h('div', { class: 'elige-foto' }, ...recs.map((a) => h('button', { type: 'button', class: a === recUsar ? 'si damero' : 'damero',
       'aria-label': 'Usar este recorte', onclick: () => elegirUna(a, recs) }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '', style: 'object-fit:contain' }) : null))));
   }
@@ -936,86 +946,179 @@ function tallerFoto(c, vars, pinVivo) {
   // 4. acople
   const fondos = vars.filter((a) => a.grupo === 'fondo');
   const fondoUsar = fondos.find((a) => a.estado === 'aprobada') || fondos.sort((x, y) => String(y.creado).localeCompare(String(x.creado)))[0];
-  out.push(pasoT('4', 'Acople · arrastra y ajusta'));
+  out.push(pasoT('4', 'Acople · fondo, ella y elementos'));
   if (!recUsar || !fondoUsar) out.push(h('p', { class: 'meta' }, 'Cuando tengas el recorte (paso 2) y un fondo elegido (paso 3), aquí los juntas.'));
-  else out.push(...editorAcople(c, recUsar, fondoUsar));
+  else out.push(...elementosTaller(c, vars), ...editorAcople(c, recUsar, fondoUsar, vars));
   const res = vars.filter(esDelTaller).sort((x, y) => String(y.creado).localeCompare(String(x.creado)));
   for (const o of ords.filter((o) => o.datos.modo === 'integrar' && (enMarcha(o) || o.estado === 'error')).slice(-2)) out.push(lineaOrden(o));
   if (res.length) out.push(h('div', { class: 'sub-mesa' }, 'Portadas con su foto'), h('div', { class: 'varias' }, ...res.map((a) => tarjetaVar(c, a, { taller: true }))));
   return out;
 }
 
-function editorAcople(c, rec, fondo) {
+// ---------- elementos como la referencia de Jay: marco de flores, nombre, emblema 15 (Gemini + croma en la Ryzen7) ----------
+const TIPOS_EL = [['flores', 'Marco de flores'], ['nombre', 'Nombre'], ['emblema', 'Emblema 15']];
+function elementosTaller(c, vars) {
+  const out = [], cid = c.cid;
+  const estilos = E.archivos.filter((a) => a.tipo === 'referencia' && a.origen === 'jay' && ['portada', 'fondo'].includes(a.grupo) && a.estado !== 'descartada');
+  let estilo = leerLS('estilo:' + cid);
+  if (!estilos.some((a) => a.ruta === estilo)) estilo = (estilos.find((a) => /^Estilo/.test(a.nota || '')) || estilos[0] || {}).ruta || null;
+  out.push(h('div', { class: 'meta', style: 'margin-top:6px' }, 'Referencia de estilo para los elementos (toca para cambiarla)'));
+  if (estilos.length) out.push(h('div', { class: 'elige-foto' }, ...estilos.map((a) => h('button', { type: 'button', class: a.ruta === estilo ? 'si' : null,
+    'aria-label': 'Usar como estilo', onclick: () => { ponerLS('estilo:' + cid, a.ruta); pintarDiseno(); } },
+    enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '' }) : null))));
+  else out.push(h('p', { class: 'meta' }, 'Sube tu referencia en «Portadas · Del catálogo» o en el paso 3 y aparece aquí.'));
+  const ind = h('input', { type: 'text', placeholder: 'Indicación (opcional). Ej.: rosas rosa pastel con hojas plateadas', 'aria-label': 'Indicación para el elemento' });
+  const vivos = E.ordenes.filter((o) => o.tipo === 'gemini' && o.datos && o.datos.modo === 'elemento');
+  out.push(ind, h('div', { class: 'acc-dis' }, ...TIPOS_EL.map(([k, nom]) => h('button', { type: 'button', class: 'btn chico sec', onclick: async (ev) => {
+    ev.target.disabled = true;
+    await pedirOrden(c, 'gemini', { modo: 'elemento', elemento: k, grupo: 'elemento', taller: true, nombre: c.nombre, colores: c.colores, tema: temaDe(c),
+      estilo, instruccion: ind.value.trim() });
+  } }, '+ ' + (k === 'nombre' ? `Nombre «${c.nombre || ''}»` : nom)))));
+  for (const o of vivos.filter((o) => enMarcha(o) || o.estado === 'error').slice(-3)) out.push(lineaOrden(o));
+  return out;
+}
+
+function editorAcople(c, rec, fondo, vars) {
   const W = 1200, H = 1600, cid = c.cid;
-  E.acople = E.acople || {};
-  if (!E.acople[cid]) { try { E.acople[cid] = JSON.parse(leerLS('acople:' + cid) || 'null'); } catch (_) {} }
-  const st = E.acople[cid] = E.acople[cid] || { cx: 0.5, cy: null, s: null, flip: false, sombra: true };
-  const guardar = () => ponerLS('acople:' + cid, JSON.stringify(st));
-  const cv = h('canvas', { class: 'lienzo', width: W, height: H, 'aria-label': 'Vista previa de la portada: arrastra para mover, pellizca para cambiar el tamaño' });
+  const els = vars.filter((a) => a.grupo === 'elemento').sort((x, y) => String(y.creado).localeCompare(String(x.creado)));
+  const deTipo = (k) => els.filter((a) => (a.nota || '').endsWith('· ' + k));
+  E.acople2 = E.acople2 || {};
+  if (!E.acople2[cid]) { try { E.acople2[cid] = JSON.parse(leerLS('acople2:' + cid) || 'null'); } catch (_) {} }
+  const st = E.acople2[cid] = E.acople2[cid] || { activa: 'ella', blur: 0, sombra: true, capas: {} };
+  const DEF = { ella: { cx: 0.5, cy: null, s: null, on: true }, flores: { cx: 0.5, cy: null, s: 1.04, on: true }, emblema: { cx: 0.5, cy: 0.55, s: 0.22, on: true },
+    nombre: { cx: 0.5, cy: 0.72, s: 0.78, on: true }, frase: { cx: 0.5, cy: 0.81, s: 1, on: true, texto: 'UNA CELEBRACIÓN DE ENSUEÑO\nEN FAMILIA Y CON AMOR', color: '#3b2f2f' } };
+  for (const k of Object.keys(DEF)) st.capas[k] = { ...DEF[k], ...(st.capas[k] || {}) };
+  const guardar = () => ponerLS('acople2:' + cid, JSON.stringify(st));
+  // qué imagen va en cada capa
+  const ruta = { ella: rec.ruta };
+  for (const [k] of TIPOS_EL) { const l = deTipo(k); if (l.length) ruta[k] = (l.find((a) => a.ruta === st.capas[k].ruta) || l[0]).ruta; }
+  const faltan = [fondo.ruta, ...Object.values(ruta)].filter((r) => !enlace(r));
+  if (faltan.length) firmar(faltan).then(() => pintarDiseno());
+  const capasImg = ['ella', 'flores', 'emblema', 'nombre'].filter((k) => ruta[k]);
+  const IM = {}; let F = null;
+  const cv = h('canvas', { class: 'lienzo', width: W, height: H, 'aria-label': 'Portada: arrastra para mover la capa elegida, pellizca para cambiar su tamaño' });
   const ctx = cv.getContext('2d');
-  let F = null, R = null;
-  const dibujar = () => {
-    ctx.fillStyle = '#eee'; ctx.fillRect(0, 0, W, H);
-    if (F) { const k = Math.max(W / F.naturalWidth, H / F.naturalHeight); const fw = F.naturalWidth * k, fh = F.naturalHeight * k; ctx.drawImage(F, (W - fw) / 2, (H - fh) / 2, fw, fh); }
-    if (!R) return;
-    if (st.s == null) { st.s = Math.min(0.85, 0.8 * H * R.naturalWidth / (R.naturalHeight * W)); tam.value = st.s; }   // que quepa entera
-    const rw = st.s * W, rh = rw * R.naturalHeight / R.naturalWidth;
-    const cy = st.cy == null ? H - rh / 2 - H * 0.03 : st.cy * H, cx = st.cx * W;
-    if (st.sombra) {
-      const g = ctx.createRadialGradient(cx, cy + rh / 2, 0, cx, cy + rh / 2, rw * 0.45);
-      g.addColorStop(0, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.save(); ctx.translate(cx, cy + rh / 2); ctx.scale(1, 0.18); ctx.translate(-cx, -(cy + rh / 2));
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy + rh / 2, rw * 0.45, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    }
-    ctx.save(); ctx.translate(cx, cy); if (st.flip) ctx.scale(-1, 1);
-    ctx.drawImage(R, -rw / 2, -rh / 2, rw, rh); ctx.restore();
+  const medida = (k) => {
+    const L = st.capas[k], im = IM[k];
+    if (!im) return null;
+    if (L.s == null) L.s = Math.min(0.85, 0.8 * H * im.naturalWidth / (im.naturalHeight * W));
+    const w = L.s * W, hh = w * im.naturalHeight / im.naturalWidth;
+    const cy = L.cy == null ? H - hh / 2 - (k === 'ella' ? H * 0.03 : -H * 0.005) : L.cy * H;
+    return { w, h: hh, cx: L.cx * W, cy };
   };
-  const uf = enlace(fondo.ruta), ur = enlace(rec.ruta);
-  // arrastrar con un dedo, pellizcar con dos
-  const dedos = new Map(); let dist0 = 0, s0 = st.s;
-  const fijarCy = () => { if (st.cy == null && R) { const rh = st.s * W * R.naturalHeight / R.naturalWidth; st.cy = (H - rh / 2 - H * 0.03) / H; } };
+  const fraseMedida = () => {
+    const L = st.capas.frase, fs = 38 * L.s, lineas = (L.texto || '').split('\n');
+    ctx.font = `500 ${fs}px Cinzel, "Cormorant Garamond", Georgia, serif`;
+    const w = Math.max(10, ...lineas.map((t) => ctx.measureText(t).width)), hh = lineas.length * fs * 1.35;
+    return { w, h: hh, cx: L.cx * W, cy: L.cy * H, fs, lineas };
+  };
+  const dibujar = (exportar) => {
+    ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#eee'; ctx.fillRect(0, 0, W, H);
+    if (F) {
+      const k = Math.max(W / F.naturalWidth, H / F.naturalHeight) * (st.blur ? 1.06 : 1); const fw = F.naturalWidth * k, fh = F.naturalHeight * k;
+      ctx.save(); if (st.blur) ctx.filter = `blur(${st.blur}px)`; ctx.drawImage(F, (W - fw) / 2, (H - fh) / 2, fw, fh); ctx.restore();
+    }
+    for (const k of ['ella', 'flores', 'emblema', 'nombre', 'frase']) {
+      const L = st.capas[k]; if (!L.on) continue;
+      if (k === 'frase') {
+        if (!(L.texto || '').trim()) continue;
+        const m = fraseMedida(); ctx.save(); ctx.fillStyle = L.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        m.lineas.forEach((t, i) => ctx.fillText(t, m.cx, m.cy - m.h / 2 + m.fs * 1.35 * (i + 0.5)));
+        ctx.restore();
+      } else {
+        const m = medida(k); if (!m) continue;
+        if (k === 'ella' && st.sombra) {
+          const g = ctx.createRadialGradient(m.cx, m.cy + m.h / 2, 0, m.cx, m.cy + m.h / 2, m.w * 0.45);
+          g.addColorStop(0, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.save(); ctx.translate(m.cx, m.cy + m.h / 2); ctx.scale(1, 0.18); ctx.translate(-m.cx, -(m.cy + m.h / 2));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(m.cx, m.cy + m.h / 2, m.w * 0.45, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        ctx.save(); ctx.translate(m.cx, m.cy); if (L.flip) ctx.scale(-1, 1); ctx.drawImage(IM[k], -m.w / 2, -m.h / 2, m.w, m.h); ctx.restore();
+      }
+    }
+    if (!exportar) {   // marco punteado de la capa que se está moviendo (no sale en la portada guardada)
+      const k = st.activa, L = st.capas[k];
+      const m = k === 'frase' ? fraseMedida() : medida(k);
+      if (m && L.on) { ctx.save(); ctx.setLineDash([14, 10]); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.strokeRect(m.cx - m.w / 2, m.cy - m.h / 2, m.w, m.h); ctx.restore(); }
+    }
+  };
+  // controles
+  const tam = h('input', { type: 'range', min: '0.1', max: '2.2', step: '0.01', 'aria-label': 'Tamaño de la capa elegida',
+    oninput: (e) => { fijarCy(); st.capas[st.activa].s = +e.target.value; dibujar(); }, onchange: guardar });
+  const desenf = h('input', { type: 'range', min: '0', max: '24', step: '0.5', value: String(st.blur || 0), 'aria-label': 'Desenfoque del fondo',
+    oninput: (e) => { st.blur = +e.target.value; dibujar(); }, onchange: guardar });
+  const sincTam = () => { const L = st.capas[st.activa]; tam.value = String(L.s == null ? 0.6 : L.s); };
+  const fijarCy = () => {
+    const k = st.activa, L = st.capas[k];
+    if (L.cy == null) { const m = k === 'frase' ? fraseMedida() : medida(k); if (m) L.cy = m.cy / H; }
+  };
+  if (enlace(fondo.ruta)) imagen(enlace(fondo.ruta), (im) => { F = im; dibujar(); });
+  for (const k of capasImg) { const u = enlace(ruta[k]); if (u) imagen(u, (im) => { IM[k] = im; if (k === st.activa) sincTam(); dibujar(); }); }
+  if (document.fonts && document.fonts.load) document.fonts.load('500 40px Cinzel').then(() => dibujar()).catch(() => {});
+  sincTam();
+  // arrastrar con un dedo, pellizcar con dos (la capa elegida)
+  const dedos = new Map(); let dist0 = 0, s0 = 1;
   cv.addEventListener('pointerdown', (e) => { try { cv.setPointerCapture(e.pointerId); } catch (_) {} dedos.set(e.pointerId, [e.clientX, e.clientY]); fijarCy();
-    if (dedos.size === 2) { const [a, b] = [...dedos.values()]; dist0 = Math.hypot(a[0] - b[0], a[1] - b[1]); s0 = st.s; } });
+    if (dedos.size === 2) { const [a, b] = [...dedos.values()]; dist0 = Math.hypot(a[0] - b[0], a[1] - b[1]); s0 = st.capas[st.activa].s || 0.6; } });
   cv.addEventListener('pointermove', (e) => {
     if (!dedos.has(e.pointerId)) return;
-    const k = W / cv.clientWidth, [px, py] = dedos.get(e.pointerId);
+    const k = W / cv.clientWidth, [px, py] = dedos.get(e.pointerId), L = st.capas[st.activa];
     dedos.set(e.pointerId, [e.clientX, e.clientY]);
-    if (dedos.size === 1) { st.cx += (e.clientX - px) * k / W; st.cy += (e.clientY - py) * k / H; }
-    else if (dedos.size === 2 && dist0) { const [a, b] = [...dedos.values()]; st.s = Math.min(2, Math.max(0.15, s0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / dist0)); tam.value = st.s; }
+    if (dedos.size === 1) { L.cx += (e.clientX - px) * k / W; L.cy += (e.clientY - py) * k / H; }
+    else if (dedos.size === 2 && dist0) { const [a, b] = [...dedos.values()]; L.s = Math.min(2.2, Math.max(0.1, s0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / dist0)); tam.value = L.s; }
     dibujar();
   });
   const soltar = (e) => { dedos.delete(e.pointerId); if (dedos.size < 2) dist0 = 0; guardar(); };
   cv.addEventListener('pointerup', soltar); cv.addEventListener('pointercancel', soltar);
-  const tam = h('input', { type: 'range', min: '0.15', max: '2', step: '0.01', value: String(st.s || 0.6), 'aria-label': 'Tamaño de ella',
-    oninput: (e) => { fijarCy(); st.s = +e.target.value; dibujar(); }, onchange: guardar });
-  if (uf) imagen(uf, (im) => { F = im; dibujar(); });
-  if (ur) imagen(ur, (im) => { R = im; dibujar(); });
-  if (!uf || !ur) firmar([fondo.ruta, rec.ruta]).then(() => pintarDiseno());
+  const nombres = { ella: 'Ella', flores: 'Flores', emblema: 'Emblema', nombre: 'Nombre', frase: 'Frase' };
+  const chips = h('div', { class: 'capas' }, ...['ella', 'flores', 'emblema', 'nombre', 'frase'].filter((k) => k === 'frase' || ruta[k]).map((k) =>
+    h('button', { type: 'button', class: (st.activa === k ? 'si' : '') + (st.capas[k].on ? '' : ' apagada'), 'aria-pressed': String(st.activa === k),
+      onclick: () => { st.activa = k; guardar(); pintarDiseno(); } }, nombres[k])));
+  const L = st.capas[st.activa];
+  const extra = [];
+  if (st.activa !== 'ella' && st.activa !== 'frase') {
+    const l = deTipo(st.activa);
+    if (l.length > 1) extra.push(h('div', { class: 'elige-foto' }, ...l.map((a) => h('button', { type: 'button', class: (a.ruta === ruta[st.activa] ? 'si ' : '') + 'damero',
+      'aria-label': 'Usar esta versión', onclick: () => { L.ruta = a.ruta; guardar(); pintarDiseno(); } },
+      enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '', style: 'object-fit:contain' }) : null))));
+  }
+  if (st.activa === 'frase') {
+    const txt = h('textarea', { 'data-k': 'frase-' + cid, rows: 2, oninput: (e) => { L.texto = e.target.value; dibujar(); guardar(); } });
+    txt.value = L.texto || '';
+    extra.push(txt, h('div', { class: 'cuantas' }, h('span', { class: 'meta' }, 'Color:'),
+      ...[['#3b2f2f', 'Oscuro'], ['#ffffff', 'Blanco'], ['#b8925a', 'Dorado'], ['#9aa0a6', 'Plata']].map(([col, nom]) =>
+        h('button', { type: 'button', class: L.color === col ? 'si' : null, onclick: () => { L.color = col; guardar(); dibujar(); pintarDiseno(); } }, nom))));
+  }
   const nota = h('textarea', { 'data-k': 'integrar-' + cid, rows: 2, placeholder: 'Para «Integrar con IA» (opcional). Ej.: luz de atardecer desde la izquierda' });
   const guardarPortada = async (integrar, boton) => {
-    if (!F || !R) return;
+    if (!F || !IM.ella) return;
     boton.disabled = true;
     try {
-      dibujar();
+      dibujar(true);
       const blob = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', 0.92));
-      const nombre = `ref-jay-acople-${Date.now()}.jpg`, ruta = `c/${cid}/${nombre}`;
-      const up = await sb.storage.from('produccion').upload(ruta, blob, { contentType: 'image/jpeg', upsert: false });
+      dibujar();
+      const nom = `ref-jay-acople-${Date.now()}.jpg`, rr = `c/${cid}/${nom}`;
+      const up = await sb.storage.from('produccion').upload(rr, blob, { contentType: 'image/jpeg', upsert: false });
       if (up.error) throw up.error;
-      const { error } = await sb.from('prod_archivos').insert({ ref: `jay:${cid}:${nombre}`, cid, tipo: 'variacion', ruta, mime: 'image/jpeg',
+      const { error } = await sb.from('prod_archivos').insert({ ref: `jay:${cid}:${nom}`, cid, tipo: 'variacion', ruta: rr, mime: 'image/jpeg',
         nota: 'Portada con su foto · acople', grupo: 'portada', origen: 'jay' });
       if (error) throw error;
-      if (integrar) await pedirOrden(c, 'gemini', { modo: 'integrar', grupo: 'portada', taller: true, nombre: c.nombre, acople: ruta, instruccion: nota.value.trim() });
+      if (integrar) await pedirOrden(c, 'gemini', { modo: 'integrar', grupo: 'portada', taller: true, nombre: c.nombre, acople: rr, instruccion: nota.value.trim() });
       else toast({ titulo: 'Portada guardada', texto: 'Quedó abajo, en «Portadas con su foto», con Aprobar y Rehacer.' });
       await cargarArchivos(cid);
     } catch (ex) { alert('No se pudo guardar: ' + (ex.message || ex)); }
     boton.disabled = false;
   };
   return [h('div', { class: 'lienzo-caja' }, cv),
+    h('div', { class: 'acc-dis', style: 'align-items:center' }, h('span', { class: 'meta' }, 'Desenfoque del fondo'), desenf),
+    h('div', { class: 'meta', style: 'margin-top:4px' }, 'Capa que mueves (toca una):'), chips,
     h('div', { class: 'acc-dis', style: 'align-items:center' }, h('span', { class: 'meta' }, 'Tamaño'), tam),
     h('div', { class: 'acc-dis' },
-      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.flip = !st.flip; dibujar(); guardar(); } }, 'Voltear'),
-      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.cx = 0.5; st.cy = null; st.s = null; dibujar(); guardar(); } }, 'Centrar'),
-      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.sombra = !st.sombra; dibujar(); guardar(); } }, 'Sombra en el piso')),
+      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { L.on = !L.on; guardar(); dibujar(); pintarDiseno(); } }, L.on ? 'Ocultar capa' : 'Mostrar capa'),
+      st.activa !== 'frase' ? h('button', { type: 'button', class: 'btn chico sec', onclick: () => { L.flip = !L.flip; dibujar(); guardar(); } }, 'Voltear') : null,
+      h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.capas[st.activa] = { ...DEF[st.activa], ruta: L.ruta, texto: L.texto, color: L.color || DEF[st.activa].color }; guardar(); pintarDiseno(); } }, 'Centrar'),
+      st.activa === 'ella' ? h('button', { type: 'button', class: 'btn chico sec', onclick: () => { st.sombra = !st.sombra; dibujar(); guardar(); } }, 'Sombra en el piso') : null),
+    ...extra,
     nota,
     h('div', { class: 'acc-dis' },
       h('button', { type: 'button', class: 'btn', onclick: (ev) => guardarPortada(false, ev.target) }, 'Guardar portada'),
