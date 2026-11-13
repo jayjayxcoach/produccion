@@ -244,13 +244,19 @@ nav.abajo{display:none}
 .lienzo-caja{width:100%;max-width:420px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid var(--linea)}
 .lienzo{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
 .acc-dis input[type=range]{flex:1 1 160px;accent-color:var(--vino)}
+.cuantas{display:flex;align-items:center;gap:6px}
+.cuantas button{min-width:40px;min-height:34px;border-radius:999px;border:1px solid var(--linea);background:var(--fondo);font-weight:700;color:var(--gris)}
+.cuantas button.si{background:var(--vino);border-color:var(--vino);color:#fff}
 .progreso{font-size:13px;padding:10px 12px;border-radius:12px;background:#FFF7E8;color:var(--ambar);border:1px dashed #E5C78F}
 .progreso.lista{background:#EEF6F0;color:var(--verde);border-color:#B9D9C3}
 .progreso.error{background:#FBEAEA;color:#9B1C1C;border-color:#E9B8B8}
 
 /* Visor de foto */
 #visor{position:fixed;inset:0;z-index:40;background:rgba(20,14,16,.92);display:flex;align-items:center;justify-content:center;padding:16px}
-#visor img,#visor video{max-width:100%;max-height:100%;border-radius:10px}
+#visor img,#visor video{display:block;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);width:auto;height:auto;object-fit:contain;border-radius:10px}
+#visor img{cursor:zoom-in}
+#visor.zoom{align-items:flex-start;justify-content:flex-start;overflow:auto}
+#visor.zoom img{max-width:none;max-height:none;cursor:zoom-out}
 #visor #b-visor{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:999px;border:none;background:#fff;color:var(--vino);font-size:20px;font-weight:700}
 
 @media (max-width: 900px){
@@ -486,10 +492,12 @@ async function ver(a) {
   await firmar([a.ruta]);
   const u = enlace(a.ruta); if (!u) return;
   const esVideo = /^video\//.test(a.mime || '') || /\.(mp4|mov|3gp)$/i.test(a.ruta);
-  $('visor-in').replaceChildren(esVideo ? h('video', { src: u, controls: true, autoplay: true, playsinline: true }) : h('img', { src: u, alt: a.nota || 'Archivo' }));
+  $('visor').classList.remove('zoom');
+  $('visor-in').replaceChildren(esVideo ? h('video', { src: u, controls: true, autoplay: true, playsinline: true })
+    : h('img', { src: u, alt: a.nota || 'Archivo', title: 'Toca para ver al 100 %', onclick: () => $('visor').classList.toggle('zoom') }));
   $('visor').classList.remove('oculto');
 }
-$('b-visor').addEventListener('click', () => { $('visor').classList.add('oculto'); $('visor-in').replaceChildren(); });
+$('b-visor').addEventListener('click', () => { $('visor').classList.add('oculto'); $('visor').classList.remove('zoom'); $('visor-in').replaceChildren(); });
 
 async function marcarLeido(cid) {
   delete E.noLeidos[cid];
@@ -829,7 +837,7 @@ function tarjetaVar(c, a, opc = {}) {
         h('button', { class: 'btn chico sec', type: 'button', onclick: () => { E.rehacer = null; pintarDiseno(); } }, 'Cancelar'))));
   } else {
     pie.append(h('div', { class: 'acc' },
-      h('button', { class: 'btn chico' + (a.estado === 'aprobada' ? '' : ' sec'), type: 'button', onclick: () => (opc.hermanos ? elegirUna(a, opc.hermanos) : marcar(a, 'aprobada')) },
+      h('button', { class: 'btn chico' + (a.estado === 'aprobada' ? '' : ' sec'), type: 'button', onclick: () => marcar(a, 'aprobada') },
         a.estado === 'aprobada' ? (opc.hermanos ? '✓ Elegida' : '✓ Aprobada') : (opc.hermanos ? 'Elegir esta' : 'Aprobar')),
       h('button', { class: 'btn chico sec', type: 'button', onclick: () => { E.rehacer = a.id; pintarDiseno(); } }, 'Rehacer'),
       h('button', { class: 'btn chico sec', type: 'button', 'aria-label': a.estado === 'descartada' ? 'Recuperar' : 'Descartar', onclick: () => marcar(a, 'descartada') }, a.estado === 'descartada' ? 'Recuperar' : 'Descartar')));
@@ -1037,13 +1045,17 @@ function tarjetaDiseno(c, g, n, ords, borr, vars, visibles, fotos, pinVivo) {
   const clave = c.cid + g, b = borr[n];
   const ids = new Set(ords.map((o) => o.id));
   const mias = vars.filter((a) => ids.has(a.orden_id)).sort((x, y) => String(x.creado).localeCompare(String(y.creado)));
-  const elegida = mias.find((a) => a.estado === 'aprobada');
+  const elegidas = mias.filter((a) => a.estado === 'aprobada').length, elegida = elegidas > 0;
   const ult = ords[ords.length - 1];
   const t = h('div', { class: 'diseno' + (elegida ? ' listo' : '') },
-    h('div', { class: 'dis-tit' }, h('b', {}, `${{ sobre: 'Sobre', portada: 'Portada', fondo: 'Fondo' }[g] || g} ${n}`), elegida ? h('span', { class: 'sello' }, '✓ Elegido') : null));
+    h('div', { class: 'dis-tit' }, h('b', {}, `${{ sobre: 'Sobre', portada: 'Portada', fondo: 'Fondo' }[g] || g} ${n}`), elegida ? h('span', { class: 'sello' }, elegidas > 1 ? `✓ ${elegidas} elegidas` : '✓ 1 elegida') : null));
   const guardar = () => guardarBorradores(clave);
+  if (!E.cuantas) E.cuantas = +(leerLS('cuantas') || 3) || 3;
+  const cuantas = () => h('div', { class: 'cuantas', role: 'group', 'aria-label': 'Cuántas variaciones' }, h('span', { class: 'meta' }, 'Cuántas:'),
+    ...[3, 4, 6].map((k) => h('button', { type: 'button', class: E.cuantas === k ? 'si' : null, 'aria-pressed': String(E.cuantas === k),
+      onclick: () => { E.cuantas = k; ponerLS('cuantas', String(k)); pintarDiseno(); } }, String(k))));
   const pedir = async (datos) => {
-    const ok = await pedirGemini(c, { modo: 'pedido', grupo: g, pedido: n, cantidad: 3, foto: fotos ? E.fotoGen : null, ...datos });
+    const ok = await pedirGemini(c, { modo: 'pedido', grupo: g, pedido: n, cantidad: E.cuantas, foto: fotos ? E.fotoGen : null, ...datos });
     if (ok) { delete borr[n]; guardar(); pintarDiseno(); }
     return ok;
   };
@@ -1085,12 +1097,12 @@ function tarjetaDiseno(c, g, n, ords, borr, vars, visibles, fotos, pinVivo) {
         : 'Qué quieres. Ej.: este mismo sobre pero en rosa y plata, con sombrero vaquero y flores.',
       oninput: (ev) => { b.texto = ev.target.value; guardar(); } });
     caja.value = b.texto || '';
-    t.append(caja, h('div', { class: 'acc-dis' },
+    t.append(caja, cuantas(), h('div', { class: 'acc-dis' },
       h('button', { type: 'button', class: 'btn', onclick: async (ev) => {
         if (!b.refs.length && !(b.texto || '').trim()) return alert('Pon al menos una referencia o escribe lo que quieres.');
         ev.target.disabled = true;
         if (!(await pedir({ refs: b.refs, instruccion: (b.texto || '').trim() }))) ev.target.disabled = false;
-      } }, 'Generar 3 variaciones'),
+      } }, `Generar ${E.cuantas} variaciones`),
       ords.length ? h('button', { type: 'button', class: 'btn sec', onclick: () => { delete borr[n]; guardar(); pintarDiseno(); } }, 'Cancelar') : null));
   } else if (ult) {
     // ya generado: lo que se pidió, y botones para pedir más
@@ -1098,10 +1110,10 @@ function tarjetaDiseno(c, g, n, ords, borr, vars, visibles, fotos, pinVivo) {
     if ((d.refs || []).length) t.append(miniRefs(d.refs));
     if (d.instruccion) t.append(h('p', { class: 'pedido-txt' }, '«' + d.instruccion + '»'));
     const vivo = ords.some(enMarcha);
-    t.append(h('div', { class: 'acc-dis' },
+    t.append(cuantas(), h('div', { class: 'acc-dis' },
       h('button', { type: 'button', class: 'btn chico sec', disabled: vivo ? true : null, onclick: async (ev) => {
         ev.target.disabled = true; if (!(await pedir({ refs: d.refs || [], instruccion: d.instruccion || '' }))) ev.target.disabled = false;
-      } }, '3 más igual'),
+      } }, `${E.cuantas} más igual`),
       h('button', { type: 'button', class: 'btn chico sec', onclick: () => { borr[n] = { refs: [...(d.refs || [])], texto: d.instruccion || '' }; guardar(); pintarDiseno(); } }, 'Cambiar y generar')));
   }
   for (const o of ords.filter(enMarcha)) t.append(lineaOrden(o));
