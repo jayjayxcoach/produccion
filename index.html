@@ -254,10 +254,12 @@ nav.abajo{display:none}
 /* Visor de foto */
 #visor{position:fixed;inset:0;z-index:40;background:rgba(20,14,16,.92);display:flex;align-items:center;justify-content:center;padding:16px}
 #visor img,#visor video{display:block;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);width:auto;height:auto;object-fit:contain;border-radius:10px}
-#visor img{cursor:zoom-in}
+#visor img{cursor:pointer}
 #visor.zoom{align-items:flex-start;justify-content:flex-start;overflow:auto}
-#visor.zoom img{max-width:none;max-height:none;cursor:zoom-out}
-#visor #b-visor{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:999px;border:none;background:#fff;color:var(--vino);font-size:20px;font-weight:700}
+#visor.zoom img{max-width:none;max-height:none}
+#visor #b-zoom{position:absolute;top:max(12px,env(safe-area-inset-top));right:64px;height:44px;padding:0 14px;border-radius:999px;border:none;background:rgba(255,255,255,.9);color:var(--vino);font-size:14px;font-weight:700;z-index:1}
+#visor.zoom #b-zoom{background:var(--vino);color:#fff}
+#visor #b-visor{z-index:1;position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;width:44px;height:44px;border-radius:999px;border:none;background:#fff;color:var(--vino);font-size:20px;font-weight:700}
 
 @media (max-width: 900px){
   .cuerpo{display:block;position:relative}
@@ -340,7 +342,7 @@ nav.abajo{display:none}
   </nav>
 </section>
 
-<div id="visor" class="oculto" role="dialog" aria-label="Archivo"><button type="button" id="b-visor" aria-label="Cerrar">×</button><div id="visor-in"></div></div>
+<div id="visor" class="oculto" role="dialog" aria-label="Archivo"><button type="button" id="b-visor" aria-label="Cerrar">×</button><button type="button" id="b-zoom" class="oculto" aria-label="Ver al 100 %">100 %</button><div id="visor-in"></div></div>
 
 <button id="toast" class="oculto" type="button">
   <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="#C9A36A" aria-hidden="true"><path d="M12 21s-7-4.4-9.3-9C1.2 8.9 3 5 6.6 5c2 0 3.4 1.1 4.4 2.6C12 6.1 13.4 5 15.4 5 19 5 20.8 8.9 19.3 12 17 16.6 12 21 12 21z"></path></svg></span>
@@ -494,10 +496,16 @@ async function ver(a) {
   const esVideo = /^video\//.test(a.mime || '') || /\.(mp4|mov|3gp)$/i.test(a.ruta);
   $('visor').classList.remove('zoom');
   $('visor-in').replaceChildren(esVideo ? h('video', { src: u, controls: true, autoplay: true, playsinline: true })
-    : h('img', { src: u, alt: a.nota || 'Archivo', title: 'Toca para ver al 100 %', onclick: () => $('visor').classList.toggle('zoom') }));
+    : h('img', { src: u, alt: a.nota || 'Archivo', title: 'Toca en cualquier parte para cerrar' }));
+  $('b-zoom').classList.toggle('oculto', esVideo);
   $('visor').classList.remove('oculto');
 }
-$('b-visor').addEventListener('click', () => { $('visor').classList.add('oculto'); $('visor').classList.remove('zoom'); $('visor-in').replaceChildren(); });
+function cerrarVisor() { $('visor').classList.add('oculto'); $('visor').classList.remove('zoom'); $('b-zoom').classList.add('oculto'); $('visor-in').replaceChildren(); }
+$('b-visor').addEventListener('click', cerrarVisor);
+$('b-zoom').addEventListener('click', (ev) => { ev.stopPropagation(); $('visor').classList.toggle('zoom'); });
+// un clic en cualquier parte (lo oscuro o la imagen) cierra; menos el video (sus controles) y el cuadro «Guardar referencia»
+$('visor').addEventListener('click', (ev) => { if (ev.target.closest('video, .compartir, #b-zoom')) return; cerrarVisor(); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('visor').classList.contains('oculto') && !$('visor-in').querySelector('.compartir')) cerrarVisor(); });
 
 async function marcarLeido(cid) {
   delete E.noLeidos[cid];
