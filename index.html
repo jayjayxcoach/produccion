@@ -894,7 +894,10 @@ function tallerFoto(c, vars, pinVivo) {
     : h('p', { class: 'meta' }, 'Todavía no hay fotos suyas en el tablero.'));
   // 2. recorte
   const recs = vars.filter((a) => a.grupo === 'recorte').sort((x, y) => String(y.creado).localeCompare(String(x.creado)));
-  const recUsar = recs.find((a) => a.estado === 'aprobada') || recs[0];
+  // el que tocó Jay, salvo que después llegó uno más nuevo (p. ej. con color): ese manda
+  const recMarcado = recs.find((a) => a.estado === 'aprobada');
+  const tocado = Math.max(recMarcado ? new Date(recMarcado.creado).getTime() : 0, +(leerLS('rec-tocado:' + cid) || 0));
+  const recUsar = recs[0] && new Date(recs[0].creado).getTime() > tocado ? recs[0] : (recMarcado || recs[0]);
   const ordRec = ords.filter((o) => o.datos.modo === 'recorte');
   const vivoRec = ordRec.some(enMarcha);
   const pedirRec = (extra) => pedirOrden(c, 'gemini', { modo: 'recorte', grupo: 'recorte', taller: true, nombre: c.nombre, foto, ...extra });
@@ -912,7 +915,7 @@ function tallerFoto(c, vars, pinVivo) {
       h('div', { class: 'recorte-acc' },
         recUsar.estado === 'aprobada' ? h('span', { class: 'sello' }, '✓ Este va') : null,
         h('span', { class: 'meta' }, recUsar.nota || 'Recorte'),
-        h('button', { type: 'button', class: 'btn chico' + (recUsar.estado === 'aprobada' ? '' : ' sec'), onclick: () => elegirUna(recUsar, recs) }, recUsar.estado === 'aprobada' ? '✓ Bien' : 'Bien, usar este'),
+        h('button', { type: 'button', class: 'btn chico' + (recUsar.estado === 'aprobada' ? '' : ' sec'), onclick: () => { ponerLS('rec-tocado:' + cid, String(Date.now())); elegirUna(recUsar, recs); } }, recUsar.estado === 'aprobada' ? '✓ Bien' : 'Bien, usar este'),
         ...[['Recorta más los bordes', { px: 5 }], ['Quita el halo', { px: 6 }], ['Incluye el caballo completo', { todo: true }], ['Solo ella', { modelo: 'humano' }]].map(([txt, extra]) =>
           h('button', { type: 'button', class: 'btn chico sec', disabled: vivoRec || !foto ? true : null, onclick: (ev) => { ev.target.disabled = true; pedirRec({ ...extra, foto: recUsar.de_ref || foto }); } }, txt)),
         h('div', { class: 'meta', style: 'margin-top:4px' }, 'Color (colorimetría):'),
@@ -921,7 +924,7 @@ function tallerFoto(c, vars, pinVivo) {
             disabled: vivoRec ? true : null, onclick: (ev) => { ev.target.disabled = true;
               pedirRec(k === 'ninguno' ? { color: k, foto: recUsar.de_ref || foto } : { color: k, desde: recUsar.ruta, nota_base: recUsar.nota, foto: recUsar.de_ref || foto }); } }, nom))))));
     if (recs.length > 1) out.push(h('div', { class: 'elige-foto' }, ...recs.map((a) => h('button', { type: 'button', class: a === recUsar ? 'si damero' : 'damero',
-      'aria-label': 'Usar este recorte', onclick: () => elegirUna(a, recs) }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '', style: 'object-fit:contain' }) : null))));
+      'aria-label': 'Usar este recorte', onclick: () => { ponerLS('rec-tocado:' + cid, String(Date.now())); elegirUna(a, recs); } }, enlace(a.miniatura || a.ruta) ? h('img', { src: enlace(a.miniatura || a.ruta), alt: '', style: 'object-fit:contain' }) : null))));
   }
   // 3. fondo sin persona (mismos «diseños» que las tandas: tus referencias numeradas + qué quieres → 3 variaciones → eliges 1)
   out.push(pasoT('3', 'Fondo sin persona · tus referencias + lo que quieres'));
