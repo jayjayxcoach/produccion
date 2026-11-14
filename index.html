@@ -517,9 +517,22 @@ async function marcarLeido(cid) {
   await sb.from('prod_lecturas').upsert({ cid, leido_hasta: new Date().toISOString() });
   pintarContadores(); pintarLista();
 }
-function tocaDe(cid) {
+// A Jay solo le toca algo cuando la clienta ya eligió sobre Y portada: eso muestra su interés real (14-nov).
+function eligio(c) {
+  if (!c) return true;
+  const e = c.eleccion || '';
+  if (/\bS\d+/.test(e) && /\bP\d+/.test(e)) return true;
+  if (pasoDe(c) >= 3) return true;
+  if (c.paso_manual != null && c.paso_manual >= 1) return true;
+  if (c.evento && !/xv|quince/i.test(c.evento) && pasoDe(c) >= 1) return true;
+  return false;
+}
+function avisosDe(cid) {
   const lim = Date.now() - TOCA_DIAS * 864e5;
   return E.avisos.filter((a) => a.cid === cid && !a.atendido && new Date(a.creado).getTime() > lim);
+}
+function tocaDe(cid) {
+  return eligio(E.clientas.find((c) => c.cid === cid)) ? avisosDe(cid) : [];
 }
 function esCambio(a) { return /cambio/i.test((a.titulo || '') + ' ' + (a.texto || '').slice(0, 60)); }
 
@@ -617,7 +630,7 @@ function filaClienta(c) {
 }
 
 function pintarContadores() {
-  const sinVer = E.avisos.filter((a) => !a.atendido && new Date(a.creado).getTime() > Date.now() - TOCA_DIAS * 864e5);
+  const sinVer = E.avisos.filter((a) => !a.atendido && new Date(a.creado).getTime() > Date.now() - TOCA_DIAS * 864e5 && (!a.cid || eligio(E.clientas.find((c) => c.cid === a.cid))));
   const cambios = sinVer.filter(esCambio).length;
   const totalNl = Object.values(E.noLeidos).reduce((s, n) => s + n, 0);
   const pon = (id, n) => { const el = $(id); el.textContent = n; el.classList.toggle('oculto', !n); };
@@ -670,6 +683,12 @@ function pintarDiseno() {
   if (tocas.length) {
     const t = h('div', { class: 'tarjeta' }, h('h2', {}, 'Te toca'));
     for (const a of tocas) t.append(h('div', { class: 'toca' }, h('b', {}, a.titulo), h('span', { class: 't' }, a.texto), h('span', { class: 'meta' }, hora(a.creado)),
+      h('div', { class: 'aviso-acc' }, h('button', { class: 'btn chico sec', type: 'button', onclick: () => atender(a.id) }, 'Listo'))));
+    caja.push(t);
+  } else if (avisosDe(c.cid).length) {
+    const t = h('div', { class: 'tarjeta' }, h('h2', {}, 'En espera'),
+      h('p', { class: 'nota' }, 'Todavía no elige sobre y portada: no te toca hasta que elija. Lo que preguntó queda aquí.'));
+    for (const a of avisosDe(c.cid)) t.append(h('div', { class: 'toca' }, h('b', {}, a.titulo), h('span', { class: 't' }, a.texto), h('span', { class: 'meta' }, hora(a.creado)),
       h('div', { class: 'aviso-acc' }, h('button', { class: 'btn chico sec', type: 'button', onclick: () => atender(a.id) }, 'Listo'))));
     caja.push(t);
   }
